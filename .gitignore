@@ -217,6 +217,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+
 # User uploaded files
 backend/storage/uploads/
 
@@ -225,3 +226,4 @@ backend/storage/uploads/
 
 # SQLite database
 *.db
+
