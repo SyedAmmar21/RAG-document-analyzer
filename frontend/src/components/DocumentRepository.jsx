@@ -1,6 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
 import { deleteDocument, getDocuments } from "../services/api";
 
+function formatSavedTime(value) {
+  if (!value) return "-";
+
+  const hasTimezone = /(?:z|[+-]\d{2}:\d{2})$/i.test(value);
+  const date = new Date(hasTimezone ? value : `${value}Z`);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
 export default function DocumentRepository({ activeDocumentId, onUseDocument, onDeleteDocument }) {
   const [documents, setDocuments] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,7 +139,7 @@ export default function DocumentRepository({ activeDocumentId, onUseDocument, on
                   <td>{document.file_name}</td>
                   <td>{document.file_path}</td>
                   <td>{document.status}</td>
-                  <td>{document.created_date}</td>
+                  <td title={document.created_date}>{formatSavedTime(document.created_date)}</td>
                   <td>
                     <div className="table-actions">
                       <button

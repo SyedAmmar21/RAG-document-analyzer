@@ -2,8 +2,10 @@ import uuid
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from app.db.database import get_connection
+
+MALAYSIA_TZ = timezone(timedelta(hours=8))
 
 
 def create_document_record(file_path: str, file_size: int, file_type: str):
@@ -11,7 +13,7 @@ def create_document_record(file_path: str, file_size: int, file_type: str):
     cursor = conn.cursor()
 
     document_id = str(uuid.uuid4())
-    created_date = datetime.utcnow().isoformat()
+    created_date = datetime.now(MALAYSIA_TZ).isoformat(timespec="seconds")
 
     metadata = {
         "file_size": file_size,
@@ -94,7 +96,7 @@ def add_ai_response(document_id: str, query: str, response: str):
     metadata["ai_responses"].append({
         "query": query,
         "response": response,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(MALAYSIA_TZ).isoformat(timespec="seconds")
     })
 
     # Update DB
