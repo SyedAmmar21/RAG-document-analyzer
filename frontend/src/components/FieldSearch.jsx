@@ -1,50 +1,72 @@
-import { useState } from "react";
-import MarkdownMessage from "./MarkdownMessage";
-import { searchFields } from "../services/api";
+import { useEffect, useState } from "react";
+import { saveDocumentMetadata } from "../services/api";
 
-const defaultFields = ["Name", "Location", "Date"];
+const emptyMetadata = {
+  name: "",
+  location: "",
+  date: "",
+};
 
-export default function FieldSearch({ documentId }) {
-  const [fields, setFields] = useState(defaultFields);
-  const [result, setResult] = useState("");
+export default function FieldSearch({ documentId, metadataSuggestions, onMetadataSaved }) {
+  const [metadataForm, setMetadataForm] = useState(emptyMetadata);
   const [error, setError] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  const [message, setMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [hasSavedMetadata, setHasSavedMetadata] = useState(false);
 
-  const updateField = (index, value) => {
-    setFields((currentFields) => currentFields.map((field, fieldIndex) => (fieldIndex === index ? value : field)));
-  };
-
-  const addField = () => {
-    setFields((currentFields) => [...currentFields, ""]);
-  };
-
-  const removeField = (index) => {
-    setFields((currentFields) => currentFields.filter((_, fieldIndex) => fieldIndex !== index));
-  };
-
-  const handleSearch = async () => {
-    const activeFields = fields.map((field) => field.trim()).filter(Boolean);
+  useEffect(() => {
+    setError("");
+    setMessage("");
 
     if (!documentId) {
-      setError("Upload a document first before searching for fields.");
+      setMetadataForm(emptyMetadata);
+      setIsReviewOpen(false);
+      setHasSavedMetadata(false);
       return;
     }
 
-    if (activeFields.length === 0) {
-      setError("Add at least one field or search key.");
+    if (!metadataSuggestions) return;
+
+    setMetadataForm({
+      name: metadataSuggestions.name || "",
+      location: metadataSuggestions.location || "",
+      date: metadataSuggestions.date || "",
+    });
+    setHasSavedMetadata(Boolean(metadataSuggestions.saved));
+    setIsReviewOpen(!metadataSuggestions.saved);
+  }, [documentId, metadataSuggestions]);
+
+  const updateMetadataField = (field, value) => {
+    setMetadataForm((currentMetadata) => ({
+      ...currentMetadata,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveMetadata = async () => {
+    if (!documentId) {
+      setError("Upload a document first before saving metadata.");
       return;
     }
 
-    setIsSearching(true);
+    setIsSaving(true);
     setError("");
 
     try {
-      const res = await searchFields(activeFields, documentId);
-      setResult(res.answer || "No matching fields were found.");
+      await saveDocumentMetadata(documentId, {
+        name: metadataForm.name.trim() || null,
+        location: metadataForm.location.trim() || null,
+        date: metadataForm.date.trim() || null,
+      });
+      setIsReviewOpen(false);
+      setHasSavedMetadata(true);
+      setMessage("Document metadata saved.");
+      onMetadataSaved();
     } catch (error) {
-      setError(error.message || "Field search failed. Please try again.");
+      setError(error.message || "Could not save document metadata.");
     } finally {
-      setIsSearching(false);
+      setIsSaving(false);
     }
   };
 
@@ -53,58 +75,93 @@ export default function FieldSearch({ documentId }) {
       <div className="panel-header">
         <div>
           <p className="section-kicker">Step 1B</p>
-          <h2 id="field-search-title">Field search</h2>
+          <h2 id="field-search-title">{hasSavedMetadata ? "Saved document fields" : "Confirm extracted fields"}</h2>
         </div>
         <span className={documentId ? "badge success" : "badge"}>{documentId ? "Ready" : "Locked"}</span>
       </div>
 
-      <div className="field-search-grid">
-        <div className="field-builder">
-          <div className="field-list">
-            {fields.map((field, index) => (
-              <div className="field-row" key={index}>
-                <input
-                  value={field}
-                  onChange={(event) => updateField(index, event.target.value)}
-                  placeholder="Name, location, date, total..."
-                  disabled={isSearching}
-                />
-                <button
-                  className="icon-button"
-                  type="button"
-                  onClick={() => removeField(index)}
-                  disabled={isSearching || fields.length === 1}
-                  aria-label={`Remove field ${index + 1}`}
-                  title="Remove field"
-                >
-                  -
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <button className="secondary-button" type="button" onClick={addField} disabled={isSearching}>
-            Add field
-          </button>
-
-          <button className="primary-button" type="button" onClick={handleSearch} disabled={!documentId || isSearching}>
-            {isSearching ? "Searching..." : "Search fields"}
-          </button>
-
-          {error && <p className="error-text">{error}</p>}
-        </div>
-
-        <div className="field-output" aria-live="polite">
-          {result ? (
-            <MarkdownMessage text={result} />
-          ) : (
-            <div className="empty-state compact">
-              <strong>Field output</strong>
-              <span>Results will be recorded here.</span>
+      <div className="metadata-summary">
+        {documentId ? (
+          <>
+            <div>
+              <span>Name</span>
+              <strong>{metadataForm.name || "Null"}</strong>
             </div>
-          )}
-        </div>
+            <div>
+              <span>Location</span>
+              <strong>{metadataForm.location || "Null"}</strong>
+            </div>
+            <div>
+              <span>Date</span>
+              <strong>{metadataForm.date || "Null"}</strong>
+            </div>
+          </>
+        ) : (
+          <div className="empty-state compact">
+            <strong>No document yet</strong>
+            <span>Upload a document to extract name, location, and date.</span>
+          </div>
+        )}
       </div>
+
+      <button
+        className="secondary-button"
+        type="button"
+        onClick={() => setIsReviewOpen(true)}
+        disabled={!documentId || isSaving}
+      >
+        Review fields
+      </button>
+
+      {message && <p className="success-text">{message}</p>}
+      {error && <p className="error-text">{error}</p>}
+
+      {isReviewOpen && documentId && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="metadata-modal" role="dialog" aria-modal="true" aria-labelledby="metadata-title">
+            <div className="metadata-modal-header">
+              <div>
+                <p className="section-kicker">Step 1B</p>
+                <h2 id="metadata-title">{hasSavedMetadata ? "Review saved fields" : "Confirm extracted fields"}</h2>
+              </div>
+            </div>
+
+            <div className="metadata-form">
+              <label>
+                <span>Name</span>
+                <input
+                  value={metadataForm.name}
+                  onChange={(event) => updateMetadataField("name", event.target.value)}
+                  placeholder="Null"
+                  disabled={isSaving}
+                />
+              </label>
+              <label>
+                <span>Location</span>
+                <input
+                  value={metadataForm.location}
+                  onChange={(event) => updateMetadataField("location", event.target.value)}
+                  placeholder="Null"
+                  disabled={isSaving}
+                />
+              </label>
+              <label>
+                <span>Date</span>
+                <input
+                  value={metadataForm.date}
+                  onChange={(event) => updateMetadataField("date", event.target.value)}
+                  placeholder="Null"
+                  disabled={isSaving}
+                />
+              </label>
+            </div>
+
+            <button className="primary-button" type="button" onClick={handleSaveMetadata} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save and close"}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

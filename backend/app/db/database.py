@@ -28,5 +28,14 @@ def init_db():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS document_metadata (
+        field TEXT,
+        value TEXT,
+        document_id TEXT,
+        FOREIGN KEY (document_id) REFERENCES documents(id)
+    )
+    """)
+
     conn.commit()
     conn.close()

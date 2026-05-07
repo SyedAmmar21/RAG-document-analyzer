@@ -7,7 +7,12 @@ from app.services.file_service import (
     save_file
 )
 from app.services.text_extraction_service import extract_text
-from app.services.document_service import create_document_record, find_document_by_upload_name
+from app.services.document_service import (
+    create_document_record,
+    find_document_by_upload_name,
+    get_document_metadata_values,
+)
+from app.services.extraction_service import extract_default_metadata
 from app.services.vector_service import index_document 
 
 router = APIRouter()
@@ -28,7 +33,8 @@ async def ingest_file(file: UploadFile = File(...)):
             "file_name": existing_document["file_name"],
             "file_path": existing_document["file_path"],
             "document_number": existing_document["number"],
-            "duplicate": True
+            "duplicate": True,
+            "metadata_suggestions": get_document_metadata_values(existing_document["document_id"])
         }
 
     file_path = save_file(file)
@@ -48,11 +54,13 @@ async def ingest_file(file: UploadFile = File(...)):
 
     # Index the document
     index_document(document_id, extracted_text)
+    metadata_suggestions = extract_default_metadata(extracted_text, os.path.basename(file_path))
 
     return {
         "message": "File uploaded and indexed",
         "document_id": document_id,
         "file_name": os.path.basename(file_path),
         "file_path": file_path,
-        "preview": extracted_text[:300]
+        "preview": extracted_text[:300],
+        "metadata_suggestions": metadata_suggestions
     }

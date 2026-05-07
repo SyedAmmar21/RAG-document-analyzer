@@ -65,3 +65,15 @@ export const deleteDocument = async (document_id) => {
 
   return parseResponse(res);
 };
+
+export const saveDocumentMetadata = async (document_id, metadata) => {
+  const res = await fetch(`${BASE_URL}/documents/${document_id}/metadata`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(metadata),
+  });
+
+  return parseResponse(res);
+};

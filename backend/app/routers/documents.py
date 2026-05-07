@@ -1,10 +1,13 @@
 import os
+from typing import Optional
 
 from elasticsearch import Elasticsearch
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from app.core.config import ELASTICSEARCH_HOST
 from app.db.database import get_connection
+from app.services.document_service import get_document_metadata, save_document_metadata
 
 router = APIRouter()
 
@@ -13,6 +16,12 @@ es = Elasticsearch(
     request_timeout=30,
     verify_certs=False
 )
+
+
+class DocumentMetadataRequest(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    date: Optional[str] = None
 
 
 @router.get("/documents")
@@ -61,6 +70,11 @@ async def delete_document(document_id: str):
     file_path = row["file_path"]
 
     cursor.execute(
+        "DELETE FROM document_metadata WHERE document_id = ?",
+        (document_id,)
+    )
+
+    cursor.execute(
         "DELETE FROM documents WHERE id = ?",
         (document_id,)
     )
@@ -84,3 +98,25 @@ async def delete_document(document_id: str):
     )
 
     return {"message": "Document deleted successfully"}
+
+
+@router.get("/documents/{document_id}/metadata")
+async def get_metadata(document_id: str):
+    return {"metadata": get_document_metadata(document_id)}
+
+
+@router.post("/documents/{document_id}/metadata")
+async def save_metadata(document_id: str, request: DocumentMetadataRequest):
+    metadata = save_document_metadata(
+        document_id=document_id,
+        metadata={
+            "name": request.name,
+            "location": request.location,
+            "date": request.date,
+        }
+    )
+
+    return {
+        "message": "Document metadata saved",
+        "metadata": metadata
+    }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { uploadFile } from "../services/api";
 
-export default function FileUpload({ setDocumentId, setDocumentName, documentName, isReady }) {
+export default function FileUpload({ setDocumentId, setDocumentName, setMetadataSuggestions, documentName, isReady }) {
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -16,6 +16,7 @@ export default function FileUpload({ setDocumentId, setDocumentName, documentNam
     if (selectedFile) {
       setDocumentName(selectedFile.name);
       setDocumentId(null);
+      setMetadataSuggestions(null);
     }
   };
 
@@ -33,6 +34,7 @@ export default function FileUpload({ setDocumentId, setDocumentName, documentNam
       setMessage(res.message || "Document uploaded successfully.");
       setDocumentId(res.document_id);
       setDocumentName(res.file_name || file.name);
+      setMetadataSuggestions(res.metadata_suggestions ? { ...res.metadata_suggestions, saved: Boolean(res.duplicate) } : null);
     } catch (error) {
       setError(error.message || "Upload failed. Please try again.");
     } finally {

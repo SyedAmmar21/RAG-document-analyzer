@@ -7,11 +7,13 @@ import DocumentRepository from "../components/DocumentRepository";
 export default function Home() {
   const [documentId, setDocumentId] = useState(null);
   const [documentName, setDocumentName] = useState("");
+  const [metadataSuggestions, setMetadataSuggestions] = useState(null);
   const [activeTab, setActiveTab] = useState("chat");
 
   const handleUseDocument = (document) => {
     setDocumentId(document.document_id);
     setDocumentName(document.file_name);
+    setMetadataSuggestions(null);
     setActiveTab("chat");
   };
 
@@ -19,6 +21,7 @@ export default function Home() {
     if (deletedDocumentId === documentId) {
       setDocumentId(null);
       setDocumentName("");
+      setMetadataSuggestions(null);
     }
   };
 
@@ -64,10 +67,16 @@ export default function Home() {
           <FileUpload
             setDocumentId={setDocumentId}
             setDocumentName={setDocumentName}
+            setMetadataSuggestions={setMetadataSuggestions}
             documentName={documentName}
             isReady={Boolean(documentId)}
           />
-          <FieldSearch key={documentId || "no-document"} documentId={documentId} />
+          <FieldSearch
+            key={documentId || "no-document"}
+            documentId={documentId}
+            metadataSuggestions={metadataSuggestions}
+            onMetadataSaved={() => setMetadataSuggestions(null)}
+          />
         </div>
         <ChatWindow key={documentId || "no-document"} documentId={documentId} documentName={documentName} />
       </section>
