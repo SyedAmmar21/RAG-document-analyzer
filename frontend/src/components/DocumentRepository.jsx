@@ -16,7 +16,7 @@ export default function DocumentRepository({ activeDocumentId, onUseDocument, on
       const res = await getDocuments();
       setDocuments(res.documents || []);
     } catch (error) {
-      setError(error.message || "Could not load documents.");
+      setError(error.message || "Could not load document.");
     } finally {
       setIsLoading(false);
     }
