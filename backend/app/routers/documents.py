@@ -1,5 +1,6 @@
 import os
-from typing import Optional
+from sqlite3 import IntegrityError
+from typing import Any, Dict, Optional
 
 from elasticsearch import Elasticsearch
 from fastapi import APIRouter, HTTPException
@@ -7,7 +8,14 @@ from pydantic import BaseModel
 
 from app.core.config import ELASTICSEARCH_HOST
 from app.db.database import get_connection
-from app.services.document_service import get_document_metadata, save_document_metadata
+from app.services.domain_service import (
+    assign_document_to_domain,
+    create_domain,
+    get_all_domains,
+    get_document_domain,
+    get_domain_by_id,
+)
+from app.services.metadata_service import get_metadata as get_saved_metadata, save_metadata
 
 router = APIRouter()
 
@@ -18,10 +26,22 @@ es = Elasticsearch(
 )
 
 
-class DocumentMetadataRequest(BaseModel):
-    name: Optional[str] = None
-    location: Optional[str] = None
-    date: Optional[str] = None
+class MetadataSaveRequest(BaseModel):
+    document_id: str
+    metadata: Dict[str, Any]
+    domain_id: Optional[int] = None
+    confidence: Optional[float] = None
+
+
+class DocumentMetadataUpdateRequest(BaseModel):
+    metadata: Dict[str, Any]
+    domain_id: Optional[int] = None
+    confidence: Optional[float] = None
+
+
+class DomainCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
 
 
 @router.get("/documents")
@@ -75,6 +95,11 @@ async def delete_document(document_id: str):
     )
 
     cursor.execute(
+        "DELETE FROM document_domains WHERE document_id = ?",
+        (document_id,)
+    )
+
+    cursor.execute(
         "DELETE FROM documents WHERE id = ?",
         (document_id,)
     )
@@ -102,21 +127,66 @@ async def delete_document(document_id: str):
 
 @router.get("/documents/{document_id}/metadata")
 async def get_metadata(document_id: str):
-    return {"metadata": get_document_metadata(document_id)}
+    return {
+        "metadata": get_saved_metadata(document_id),
+        "domain": get_document_domain(document_id),
+    }
 
 
 @router.post("/documents/{document_id}/metadata")
-async def save_metadata(document_id: str, request: DocumentMetadataRequest):
-    metadata = save_document_metadata(
-        document_id=document_id,
-        metadata={
-            "name": request.name,
-            "location": request.location,
-            "date": request.date,
-        }
-    )
+async def save_document_metadata(document_id: str, request: DocumentMetadataUpdateRequest):
+    metadata = save_metadata(document_id=document_id, metadata_dict=request.metadata)
+    domain = None
+
+    if request.domain_id is not None:
+        domain_record = get_domain_by_id(request.domain_id)
+        if not domain_record:
+            raise HTTPException(status_code=404, detail="Domain not found")
+        domain = assign_document_to_domain(document_id, request.domain_id, request.confidence)
 
     return {
         "message": "Document metadata saved",
-        "metadata": metadata
+        "metadata": metadata,
+        "domain": domain,
+    }
+
+
+@router.post("/metadata/save")
+async def save_metadata_endpoint(request: MetadataSaveRequest):
+    metadata = save_metadata(
+        document_id=request.document_id,
+        metadata_dict=request.metadata
+    )
+    domain = None
+
+    if request.domain_id is not None:
+        domain_record = get_domain_by_id(request.domain_id)
+        if not domain_record:
+            raise HTTPException(status_code=404, detail="Domain not found")
+        domain = assign_document_to_domain(request.document_id, request.domain_id, request.confidence)
+
+    return {
+        "message": "Document metadata saved",
+        "metadata": metadata,
+        "domain": domain,
+    }
+
+
+@router.get("/domains")
+async def list_domains():
+    return {"domains": get_all_domains()}
+
+
+@router.post("/domains")
+async def create_new_domain(request: DomainCreateRequest):
+    try:
+        domain = create_domain(request.name, request.description)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail="Domain already exists")
+
+    return {
+        "message": "Domain created",
+        "domain": domain,
     }

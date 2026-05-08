@@ -69,63 +69,6 @@ def find_document_by_upload_name(filename: str):
     return None
 
 
-def get_document_metadata(document_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT field, value FROM document_metadata WHERE document_id = ?",
-        (document_id,)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-
-    return [
-        {
-            "field": row["field"],
-            "value": row["value"],
-            "document_id": document_id,
-        }
-        for row in rows
-    ]
-
-
-def get_document_metadata_values(document_id: str):
-    metadata = {
-        "name": None,
-        "location": None,
-        "date": None,
-    }
-
-    for row in get_document_metadata(document_id):
-        if row["field"] in metadata:
-            metadata[row["field"]] = row["value"]
-
-    return metadata
-
-
-def save_document_metadata(document_id: str, metadata: dict):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "DELETE FROM document_metadata WHERE document_id = ?",
-        (document_id,)
-    )
-
-    for field in ("name", "location", "date"):
-        value = metadata.get(field)
-        cursor.execute(
-            "INSERT INTO document_metadata (field, value, document_id) VALUES (?, ?, ?)",
-            (field, value if value else None, document_id)
-        )
-
-    conn.commit()
-    conn.close()
-
-    return get_document_metadata(document_id)
-
-
 # ADD AI RESPONSE
 def add_ai_response(document_id: str, query: str, response: str):
     conn = get_connection()

@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { uploadFile } from "../services/api";
 
-export default function FileUpload({ setDocumentId, setDocumentName, setMetadataSuggestions, documentName, isReady }) {
+export default function FileUpload({
+  setDocumentId,
+  setDocumentName,
+  setMetadataSuggestions,
+  setDomainSuggestion,
+  documentName,
+  isReady,
+}) {
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -17,6 +24,7 @@ export default function FileUpload({ setDocumentId, setDocumentName, setMetadata
       setDocumentName(selectedFile.name);
       setDocumentId(null);
       setMetadataSuggestions(null);
+      setDomainSuggestion(null);
     }
   };
 
@@ -35,6 +43,7 @@ export default function FileUpload({ setDocumentId, setDocumentName, setMetadata
       setDocumentId(res.document_id);
       setDocumentName(res.file_name || file.name);
       setMetadataSuggestions(res.metadata_suggestions ? { ...res.metadata_suggestions, saved: Boolean(res.duplicate) } : null);
+      setDomainSuggestion(res.domain_suggestion || null);
     } catch (error) {
       setError(error.message || "Upload failed. Please try again.");
     } finally {
@@ -71,7 +80,7 @@ export default function FileUpload({ setDocumentId, setDocumentName, setMetadata
         <div className="active-source-card">
           <span className="active-source-label">Active source</span>
           <strong>{documentName}</strong>
-          <span>This is the document used for chat and field search.</span>
+          <span>This source feeds metadata review and gold-analysis chat.</span>
         </div>
       )}
       {message && <p className="success-text">{message}</p>}

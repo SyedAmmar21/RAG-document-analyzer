@@ -10,9 +10,11 @@ from app.services.text_extraction_service import extract_text
 from app.services.document_service import (
     create_document_record,
     find_document_by_upload_name,
-    get_document_metadata_values,
 )
-from app.services.extraction_service import extract_default_metadata
+from app.services.domain_assignment_service import assign_domain
+from app.services.domain_service import get_all_domains, get_document_domain
+from app.services.metadata_extraction_service import extract_metadata
+from app.services.metadata_service import get_metadata_values
 from app.services.vector_service import index_document 
 
 router = APIRouter()
@@ -34,7 +36,8 @@ async def ingest_file(file: UploadFile = File(...)):
             "file_path": existing_document["file_path"],
             "document_number": existing_document["number"],
             "duplicate": True,
-            "metadata_suggestions": get_document_metadata_values(existing_document["document_id"])
+            "metadata_suggestions": get_metadata_values(existing_document["document_id"]),
+            "domain_suggestion": get_document_domain(existing_document["document_id"])
         }
 
     file_path = save_file(file)
@@ -52,9 +55,12 @@ async def ingest_file(file: UploadFile = File(...)):
         file_type=file_type
     )
 
+    # Extract metadata before downstream embedding/classification logic.
+    metadata_suggestions = extract_metadata(extracted_text)
+    domain_suggestion = assign_domain(metadata_suggestions, get_all_domains())
+
     # Index the document
     index_document(document_id, extracted_text)
-    metadata_suggestions = extract_default_metadata(extracted_text, os.path.basename(file_path))
 
     return {
         "message": "File uploaded and indexed",
@@ -62,5 +68,6 @@ async def ingest_file(file: UploadFile = File(...)):
         "file_name": os.path.basename(file_path),
         "file_path": file_path,
         "preview": extracted_text[:300],
-        "metadata_suggestions": metadata_suggestions
+        "metadata_suggestions": metadata_suggestions,
+        "domain_suggestion": domain_suggestion
     }

@@ -66,13 +66,45 @@ export const deleteDocument = async (document_id) => {
   return parseResponse(res);
 };
 
-export const saveDocumentMetadata = async (document_id, metadata) => {
-  const res = await fetch(`${BASE_URL}/documents/${document_id}/metadata`, {
+export const saveDocumentMetadata = async (document_id, metadata, domain) => {
+  const res = await fetch(`${BASE_URL}/metadata/save`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(metadata),
+    body: JSON.stringify({
+      document_id,
+      metadata,
+      domain_id: domain?.domain_id || null,
+      confidence: domain?.confidence ?? null,
+    }),
+  });
+
+  return parseResponse(res);
+};
+
+export const getDocumentMetadata = async (document_id) => {
+  const res = await fetch(`${BASE_URL}/documents/${document_id}/metadata`);
+
+  return parseResponse(res);
+};
+
+export const getDomains = async () => {
+  const res = await fetch(`${BASE_URL}/domains`);
+
+  return parseResponse(res);
+};
+
+export const createDomain = async ({ name, description }) => {
+  const res = await fetch(`${BASE_URL}/domains`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name,
+      description,
+    }),
   });
 
   return parseResponse(res);

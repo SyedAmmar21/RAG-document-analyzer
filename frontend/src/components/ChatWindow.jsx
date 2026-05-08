@@ -49,7 +49,7 @@ export default function ChatWindow({ documentId, documentName }) {
       <div className="panel-header">
         <div>
           <p className="section-kicker">Step 2</p>
-          <h2 id="chat-title">Ask questions</h2>
+          <h2 id="chat-title">Ask the analyst</h2>
         </div>
         <span className={documentId ? "badge success" : "badge"}>{documentId ? "Enabled" : "Locked"}</span>
       </div>
@@ -61,15 +61,15 @@ export default function ChatWindow({ documentId, documentName }) {
             <strong>{documentName || "Uploaded document"}</strong>
           </>
         ) : (
-          "Upload or choose a repository document to start a grounded conversation."
+          "Upload or choose a market document to start a grounded gold-analysis conversation."
         )}
       </div>
 
       <div className="messages" aria-live="polite">
         {messages.length === 0 ? (
           <div className="empty-state">
-            <strong>No questions yet</strong>
-            <span>Try asking for a summary, key risks, or a specific fact from the document.</span>
+            <strong>No analyst questions yet</strong>
+            <span>Ask about gold drivers, central-bank signals, macro risks, or market implications.</span>
           </div>
         ) : (
           messages.map((msg, i) => (
@@ -83,7 +83,7 @@ export default function ChatWindow({ documentId, documentName }) {
         {isSending && (
           <div className="message ai pending">
             <span className="message-label">Assistant</span>
-            <p>Reading the document...</p>
+            <p>Reviewing the market document...</p>
           </div>
         )}
       </div>
@@ -95,7 +95,7 @@ export default function ChatWindow({ documentId, documentName }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about the uploaded document..."
+          placeholder="Ask about gold drivers, macro signals, or market risks..."
           disabled={!documentId || isSending}
           rows="3"
         />
