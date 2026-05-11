@@ -80,9 +80,19 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
         description TEXT,
+        embeddingText TEXT,
         created_date TEXT
     )
     """)
+
+    cursor.execute("PRAGMA table_info(domains)")
+    domain_columns = [row["name"] for row in cursor.fetchall()]
+
+    if "embedding" not in domain_columns:
+        cursor.execute("""
+        ALTER TABLE domains
+        ADD COLUMN embedding TEXT
+        """)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS document_domains (

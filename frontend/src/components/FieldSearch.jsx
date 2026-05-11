@@ -80,6 +80,7 @@ export default function FieldSearch({ documentId, metadataSuggestions, domainSug
     setIsReviewOpen(!metadataSuggestions.saved);
   }, [documentId, metadataSuggestions]);
 
+
   useEffect(() => {
     if (!domainSuggestion) {
       setSelectedDomainId("");
@@ -87,11 +88,16 @@ export default function FieldSearch({ documentId, metadataSuggestions, domainSug
       return;
     }
 
-    const domainId = domainSuggestion.domain_id || domains.find((domain) => domain.name === domainSuggestion.suggested_domain)?.id;
-    setSelectedDomainId(domainId ? String(domainId) : "");
-    setDomainConfidence(domainSuggestion.confidence ?? null);
-  }, [domainSuggestion, domains]);
+    // NEW embedding-based response structure
+    const domainId = domainSuggestion.id;
 
+    setSelectedDomainId(domainId ? String(domainId) : "");
+    setDomainConfidence(
+    domainSuggestion.similarity ?? null
+    );
+  }, [domainSuggestion]);
+
+  
   const updateTextField = (field, value) => {
     setMetadataForm((currentMetadata) => ({
       ...currentMetadata,

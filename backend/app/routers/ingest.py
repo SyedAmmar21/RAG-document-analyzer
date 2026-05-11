@@ -11,7 +11,13 @@ from app.services.document_service import (
     create_document_record,
     find_document_by_upload_name,
 )
-from app.services.domain_assignment_service import assign_domain
+
+from app.services.hybrid_embedding_service import (
+    generate_hybrid_embedding,
+)
+
+from app.services.domain_similarity_service import get_best_matching_domain
+
 from app.services.domain_service import get_all_domains, get_document_domain
 from app.services.metadata_extraction_service import extract_metadata
 from app.services.metadata_service import get_metadata_values
@@ -55,12 +61,28 @@ async def ingest_file(file: UploadFile = File(...)):
         file_type=file_type
     )
 
-    # Extract metadata before downstream embedding/classification logic.
+    # Extract metadata
     metadata_suggestions = extract_metadata(extracted_text)
-    domain_suggestion = assign_domain(metadata_suggestions, get_all_domains())
 
-    # Index the document
-    index_document(document_id, extracted_text)
+    # IMPORTANT:
+    # Index document FIRST so chunk embeddings
+    # exist inside Elasticsearch
+    index_document(
+        document_id,
+        extracted_text
+    )
+
+    # Generate hybrid semantic embedding
+    # (metadata + chunk centroid)
+    document_embedding = generate_hybrid_embedding(
+        document_id=document_id,
+        metadata=metadata_suggestions,
+    )
+
+    # Find best semantic domain
+    domain_suggestion = get_best_matching_domain(
+        document_embedding
+    )
 
     return {
         "message": "File uploaded and indexed",

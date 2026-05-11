@@ -1,7 +1,13 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
-
 from app.db.database import get_connection
+
+import json
+from app.services.vector_service import embeddings
+
+from app.services.domain_centroid_service import (
+    recompute_domain_centroid,
+)
 
 MALAYSIA_TZ = timezone(timedelta(hours=8))
 
@@ -36,15 +42,40 @@ def create_domain(name: str, description: Optional[str] = None):
     if not clean_name:
         raise ValueError("Domain name is required.")
 
+    # Combine semantic context
+    embedding_input = clean_name
+
+    if clean_description:
+        embedding_input += f" {clean_description}"
+
+    # Generate embedding
+    domain_embedding = embeddings.embed_query(embedding_input)
+
     conn = get_connection()
     cursor = conn.cursor()
+
     created_date = datetime.now(MALAYSIA_TZ).isoformat(timespec="seconds")
 
     cursor.execute(
-        "INSERT INTO domains (name, description, created_date) VALUES (?, ?, ?)",
-        (clean_name, clean_description, created_date)
+        """
+        INSERT INTO domains (
+            name,
+            description,
+            embedding,
+            created_date
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            clean_name,
+            clean_description,
+            json.dumps(domain_embedding),
+            created_date
+        )
     )
+
     domain_id = cursor.lastrowid
+
     conn.commit()
     conn.close()
 
@@ -114,6 +145,9 @@ def assign_document_to_domain(document_id: str, domain_id: int, confidence: Opti
 
     conn.commit()
     conn.close()
+
+    # Recompute adaptive semantic centroid
+    recompute_domain_centroid(domain_id)
 
     return get_document_domain(document_id)
 
