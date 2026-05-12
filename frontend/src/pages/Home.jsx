@@ -4,6 +4,7 @@ import FieldSearch from "../components/FieldSearch";
 import ChatWindow from "../components/ChatWindow";
 import DocumentRepository from "../components/DocumentRepository";
 import { getDocumentMetadata } from "../services/api";
+import FoldersView from "../components/FoldersView";
 
 function rowsToMetadataSuggestions(rows) {
   const metadata = {
@@ -97,8 +98,11 @@ export default function Home() {
         <button className={activeTab === "chat" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("chat")}>
           Chat
         </button>
+        <button className={activeTab === "folders" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("folders")} >
+          Folders
+        </button>
         <button className={activeTab === "repo" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("repo")}>
-          Repository
+          All Documents
         </button>
       </nav>
 
@@ -108,6 +112,10 @@ export default function Home() {
           onUseDocument={handleUseDocument}
           onDeleteDocument={handleDeleteDocument}
         />
+      </div>
+
+      <div hidden={activeTab !== "folders"}>
+        <FoldersView />
       </div>
 
       <section className="workspace-grid" aria-label="Gold analyst workspace" hidden={activeTab !== "chat"}>

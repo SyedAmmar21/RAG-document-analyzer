@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from app.db.database import get_connection
-
+import os
 import json
 from app.services.vector_service import embeddings
 
@@ -17,10 +17,18 @@ def get_all_domains():
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT id, name, description, created_date
-    FROM domains
-    ORDER BY name ASC
-    """)
+SELECT
+    d.id,
+    d.name,
+    d.description,
+    d.created_date,
+    COUNT(dd.document_id) AS document_count
+FROM domains d
+LEFT JOIN document_domains dd
+    ON d.id = dd.domain_id
+GROUP BY d.id
+ORDER BY d.name ASC
+""")
     rows = cursor.fetchall()
     conn.close()
 
@@ -30,6 +38,7 @@ def get_all_domains():
             "name": row["name"],
             "description": row["description"],
             "created_date": row["created_date"],
+            "document_count": row["document_count"],
         }
         for row in rows
     ]
@@ -189,3 +198,33 @@ def get_document_domain(document_id: str):
         "confidence": row["confidence"],
         "created_date": row["created_date"],
     }
+
+def get_documents_by_domain(domain_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        d.id,
+        d.file_path,
+        d.created_date
+    FROM document_domains dd
+    JOIN documents d
+        ON d.id = dd.document_id
+    WHERE dd.domain_id = ?
+    ORDER BY d.created_date DESC
+    """, (domain_id,))
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return [
+        {
+            "document_id": row["id"],
+            "file_name": os.path.basename(row["file_path"]),
+            "file_path": row["file_path"],
+            "created_date": row["created_date"],
+        }
+        for row in rows
+    ]

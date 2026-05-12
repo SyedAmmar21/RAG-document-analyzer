@@ -16,6 +16,7 @@ from app.services.domain_service import (
     get_domain_by_id,
 )
 from app.services.metadata_service import get_metadata as get_saved_metadata, save_metadata
+from app.services.domain_service import get_documents_by_domain
 
 router = APIRouter()
 
@@ -173,9 +174,23 @@ async def save_metadata_endpoint(request: MetadataSaveRequest):
 
 
 @router.get("/domains")
+
 async def list_domains():
     return {"domains": get_all_domains()}
 
+@router.get("/domains/{domain_id}/documents")
+async def get_domain_documents(domain_id: int):
+    domain = get_domain_by_id(domain_id)
+
+    if not domain:
+        raise HTTPException(status_code=404, detail="Domain not found")
+
+    documents = get_documents_by_domain(domain_id)
+
+    return {
+        "domain": domain,
+        "documents": documents,
+    }
 
 @router.post("/domains")
 async def create_new_domain(request: DomainCreateRequest):

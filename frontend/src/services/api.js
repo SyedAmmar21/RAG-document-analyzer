@@ -109,3 +109,15 @@ export const createDomain = async ({ name, description }) => {
 
   return parseResponse(res);
 };
+
+export async function getFolderDocuments(domainId) {
+  const response = await fetch(
+    `${BASE_URL}/domains/${domainId}/documents`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch folder documents");
+  }
+
+  return response.json();
+}
