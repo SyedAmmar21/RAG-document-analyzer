@@ -81,21 +81,33 @@ export default function FieldSearch({ documentId, metadataSuggestions, domainSug
   }, [documentId, metadataSuggestions]);
 
 
-  useEffect(() => {
-    if (!domainSuggestion) {
-      setSelectedDomainId("");
-      setDomainConfidence(null);
-      return;
-    }
+useEffect(() => {
+  if (!domainSuggestion) {
+    setSelectedDomainId("");
+    setDomainConfidence(null);
+    return;
+  }
 
-    // NEW embedding-based response structure
-    const domainId = domainSuggestion.id;
+  // supports BOTH:
+  // upload suggestion response
+  // saved repository/folder response
 
-    setSelectedDomainId(domainId ? String(domainId) : "");
-    setDomainConfidence(
-    domainSuggestion.similarity ?? null
-    );
-  }, [domainSuggestion]);
+  const domainId =
+    domainSuggestion.domain_id ??
+    domainSuggestion.id ??
+    "";
+
+  const confidence =
+    domainSuggestion.confidence ??
+    domainSuggestion.similarity ??
+    null;
+
+  setSelectedDomainId(
+    domainId ? String(domainId) : ""
+  );
+
+  setDomainConfidence(confidence);
+}, [domainSuggestion]);
 
   
   const updateTextField = (field, value) => {
@@ -313,9 +325,15 @@ export default function FieldSearch({ documentId, metadataSuggestions, domainSug
                   <select
                     value={selectedDomainId}
                     onChange={(event) => {
-                      setSelectedDomainId(event.target.value);
+                      const newDomainId = event.target.value;
+
+                    // preserve confidence if same domain
+                    if (String(selectedDomainId) !== String(newDomainId)) {
                       setDomainConfidence(null);
+                    }
+                    setSelectedDomainId(newDomainId);
                     }}
+
                     disabled={isSaving || isCreatingDomain}
                   >
                     <option value="">Select domain</option>

@@ -115,7 +115,7 @@ export default function Home() {
       </div>
 
       <div hidden={activeTab !== "folders"}>
-        <FoldersView />
+        <FoldersView onUseDocument={handleUseDocument} />
       </div>
 
       <section className="workspace-grid" aria-label="Gold analyst workspace" hidden={activeTab !== "chat"}>

@@ -1185,3 +1185,109 @@ h2 {
   opacity: 0.7;
   font-size: 0.9rem;
 }
+
+.folders-header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.6);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 1000;
+
+  backdrop-filter: blur(6px);
+}
+
+.folder-modal {
+  width: min(540px, 92vw);
+
+  background: #111111;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  border-radius: 24px;
+
+  padding: 2rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+.folder-modal h2 {
+  margin: 0;
+}
+
+.folder-modal-subtitle {
+  margin-top: -0.5rem;
+
+  opacity: 0.72;
+
+  line-height: 1.5;
+}
+
+.folder-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.folder-form-group label {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.folder-form-group input,
+.folder-form-group textarea {
+  width: 100%;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  background: rgba(255, 255, 255, 0.04);
+
+  color: white;
+
+  border-radius: 14px;
+
+  padding: 0.9rem 1rem;
+
+  font: inherit;
+
+  resize: vertical;
+
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.folder-form-group input:focus,
+.folder-form-group textarea:focus {
+  outline: none;
+
+  border-color: rgba(255, 255, 255, 0.22);
+
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.folder-form-group textarea {
+  min-height: 120px;
+}
+
+.folder-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+
+  margin-top: 0.5rem;
+}
