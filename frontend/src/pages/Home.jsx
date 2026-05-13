@@ -1,10 +1,10 @@
 import { useState } from "react";
-import FileUpload from "../components/FileUpload";
-import FieldSearch from "../components/FieldSearch";
 import ChatWindow from "../components/ChatWindow";
 import DocumentRepository from "../components/DocumentRepository";
+import SidebarFolders from "../components/SidebarFolders";
+import UploadModal from "../components/UploadModal";
+import MetadataModal from "../components/MetadataModal";
 import { getDocumentMetadata } from "../services/api";
-import FoldersView from "../components/FoldersView";
 
 function rowsToMetadataSuggestions(rows) {
   const metadata = {
@@ -38,14 +38,15 @@ export default function Home() {
   const [documentName, setDocumentName] = useState("");
   const [metadataSuggestions, setMetadataSuggestions] = useState(null);
   const [domainSuggestion, setDomainSuggestion] = useState(null);
-  const [activeTab, setActiveTab] = useState("chat");
+  const [activeTab, setActiveTab] = useState("main");
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
 
   const handleUseDocument = async (document) => {
     setDocumentId(document.document_id);
     setDocumentName(document.file_name);
     setMetadataSuggestions(null);
     setDomainSuggestion(null);
-    setActiveTab("chat");
 
     try {
       const res = await getDocumentMetadata(document.document_id);
@@ -74,6 +75,25 @@ export default function Home() {
     }
   };
 
+  const handleUploadSuccess = (uploadData) => {
+    setDocumentId(uploadData.document_id);
+    setDocumentName(uploadData.file_name);
+    setMetadataSuggestions(uploadData.metadata_suggestions);
+    setDomainSuggestion(uploadData.domain_suggestion);
+    setIsUploadModalOpen(false);
+    
+    // Show metadata modal if metadata was extracted
+    if (uploadData.metadata_suggestions && !uploadData.is_duplicate) {
+      setIsMetadataModalOpen(true);
+    }
+  };
+
+  const handleMetadataSaved = () => {
+    // Reset metadata review state after saving
+    setMetadataSuggestions(null);
+    setDomainSuggestion(null);
+  };
+
   return (
     <main className="app-shell">
       <section className="hero-panel" aria-labelledby="page-title">
@@ -95,16 +115,26 @@ export default function Home() {
       </section>
 
       <nav className="tab-list" aria-label="Primary workspace tabs">
-        <button className={activeTab === "chat" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("chat")}>
-          Chat
-        </button>
-        <button className={activeTab === "folders" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("folders")} >
-          Folders
+        <button className={activeTab === "main" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("main")}>
+          Main
         </button>
         <button className={activeTab === "repo" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("repo")}>
-          All Documents
+          Repository
         </button>
       </nav>
+
+      <section className="semantic-workspace" aria-label="Gold analyst workspace" hidden={activeTab !== "main"}>
+        <SidebarFolders onSelectFolder={handleUseDocument} activeFolder={{ id: documentId }} />
+        <div className="workspace-chat-area">
+          <ChatWindow
+            key={documentId || "no-document"}
+            documentId={documentId}
+            documentName={documentName}
+            onUploadClick={() => setIsUploadModalOpen(true)}
+            onViewMetadata={() => setIsMetadataModalOpen(true)}
+          />
+        </div>
+      </section>
 
       <div hidden={activeTab !== "repo"}>
         <DocumentRepository
@@ -114,30 +144,20 @@ export default function Home() {
         />
       </div>
 
-      <div hidden={activeTab !== "folders"}>
-        <FoldersView onUseDocument={handleUseDocument} />
-      </div>
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUploadSuccess={handleUploadSuccess}
+      />
 
-      <section className="workspace-grid" aria-label="Gold analyst workspace" hidden={activeTab !== "chat"}>
-        <div className="document-column">
-          <FileUpload
-            setDocumentId={setDocumentId}
-            setDocumentName={setDocumentName}
-            setMetadataSuggestions={setMetadataSuggestions}
-            setDomainSuggestion={setDomainSuggestion}
-            documentName={documentName}
-            isReady={Boolean(documentId)}
-          />
-          <FieldSearch
-            key={documentId || "no-document"}
-            documentId={documentId}
-            metadataSuggestions={metadataSuggestions}
-            domainSuggestion={domainSuggestion}
-            onMetadataSaved={() => setMetadataSuggestions(null)}
-          />
-        </div>
-        <ChatWindow key={documentId || "no-document"} documentId={documentId} documentName={documentName} />
-      </section>
+      <MetadataModal
+        isOpen={isMetadataModalOpen}
+        onClose={() => setIsMetadataModalOpen(false)}
+        documentId={documentId}
+        metadataSuggestions={metadataSuggestions}
+        domainSuggestion={domainSuggestion}
+        onMetadataSaved={handleMetadataSaved}
+      />
     </main>
   );
 }

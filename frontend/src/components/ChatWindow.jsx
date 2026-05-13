@@ -2,7 +2,7 @@ import { useState } from "react";
 import { queryAgent } from "../services/api";
 import MarkdownMessage from "./MarkdownMessage";
 
-export default function ChatWindow({ documentId, documentName }) {
+export default function ChatWindow({ documentId, documentName, onUploadClick, onViewMetadata }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
@@ -48,7 +48,7 @@ export default function ChatWindow({ documentId, documentName }) {
     <section className="panel chat-panel" aria-labelledby="chat-title">
       <div className="panel-header">
         <div>
-          <p className="section-kicker">Step 2</p>
+          <p className="section-kicker">Hello User!</p>
           <h2 id="chat-title">Ask the analyst</h2>
         </div>
         <span className={documentId ? "badge success" : "badge"}>{documentId ? "Enabled" : "Locked"}</span>
@@ -57,8 +57,19 @@ export default function ChatWindow({ documentId, documentName }) {
       <div className={documentId ? "chat-context active-source-banner" : "chat-context"}>
         {documentId ? (
           <>
-            <span>Active source</span>
-            <strong>{documentName || "Uploaded document"}</strong>
+            <div className="source-info">
+              <span>Active source</span>
+              <strong>{documentName || "Uploaded document"}</strong>
+            </div>
+            <button
+              className="icon-button metadata-button"
+              onClick={onViewMetadata}
+              title="View document metadata"
+              aria-label="View document metadata"
+              type="button"
+            >
+              📋
+            </button>
           </>
         ) : (
           "Upload or choose a market document to start a grounded gold-analysis conversation."
@@ -90,7 +101,7 @@ export default function ChatWindow({ documentId, documentName }) {
 
       {error && <p className="error-text">{error}</p>}
 
-      <div className="composer">
+<div className="composer">
         <textarea
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -99,9 +110,27 @@ export default function ChatWindow({ documentId, documentName }) {
           disabled={!documentId || isSending}
           rows="3"
         />
-        <button className="primary-button" onClick={handleSend} disabled={!documentId || isSending || !query.trim()}>
-          {isSending ? "Sending..." : "Send"}
-        </button>
+        <div className="character-counter">
+          {query.length}/255
+        </div>
+        <div className="composer-actions">
+          <button
+            className="icon-button upload-button"
+            onClick={onUploadClick}
+            title="Attach document"
+            aria-label="Attach document"
+            type="button"
+          >
+            📎
+          </button>
+          <button
+            className="primary-button"
+            onClick={handleSend}
+            disabled={!documentId || isSending || !query.trim()}
+          >
+            {isSending ? "Sending..." : "Send"}
+          </button>
+        </div>
       </div>
     </section>
   );
