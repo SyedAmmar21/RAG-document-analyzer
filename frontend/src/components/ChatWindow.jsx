@@ -2,7 +2,7 @@ import { useState } from "react";
 import { queryAgent } from "../services/api";
 import MarkdownMessage from "./MarkdownMessage";
 
-export default function ChatWindow({ documentId, documentName, onUploadClick, onViewMetadata }) {
+export default function ChatWindow({ documentId, documentName, onUploadClick, onViewMetadata, scopeLabel, selectedFolderIds = [], selectedDocumentIds = [], onToggleFolderSelection, onToggleDocumentSelection }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
@@ -52,6 +52,57 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
           <h2 id="chat-title">Ask the analyst</h2>
         </div>
         <span className={documentId ? "badge success" : "badge"}>{documentId ? "Enabled" : "Locked"}</span>
+      </div>
+
+      {/* ── Retrieval Scope Header (Phase 1) ── */}
+      <div className="scope-header">
+        <span className="scope-badge">{scopeLabel}</span>
+        {selectedDocumentIds.length > 0 && (
+          <div className="scope-chips">
+            {selectedDocumentIds.slice(0, 3).map((id) => (
+              <span key={id} className="scope-chip" title={`Document: ${id}`}>
+                📄 {id.slice(0, 10)}…
+                <button
+                  className="chip-remove"
+                  onClick={() => onToggleDocumentSelection(id)}
+                  type="button"
+                  title="Remove from scope"
+                  aria-label="Remove document"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+            {selectedDocumentIds.length > 3 && (
+              <span className="scope-chip" style={{ background: 'rgba(214, 168, 61, 0.15)', borderColor: 'rgba(214, 168, 61, 0.25)' }}>
+                +{selectedDocumentIds.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
+        {selectedFolderIds.length > 0 && (
+          <div className="scope-chips">
+            {selectedFolderIds.slice(0, 3).map((id) => (
+              <span key={id} className="scope-chip scope-chip-folder" title={`Folder: ${id}`}>
+                📁 {id.slice(0, 12)}…
+                <button
+                  className="chip-remove"
+                  onClick={() => onToggleFolderSelection(id)}
+                  type="button"
+                  title="Remove from scope"
+                  aria-label="Remove folder"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+            {selectedFolderIds.length > 3 && (
+              <span className="scope-chip" style={{ background: 'rgba(116, 210, 162, 0.15)', borderColor: 'rgba(116, 210, 162, 0.25)' }}>
+                +{selectedFolderIds.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className={documentId ? "chat-context active-source-banner" : "chat-context"}>
@@ -106,7 +157,7 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about gold drivers, macro signals, or market risks..."
+          placeholder="Ask about gold's status today, gold drivers, or market risks..."
           disabled={!documentId || isSending}
           rows="3"
         />

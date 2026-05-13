@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getDomains, getFolderDocuments, createDomain } from "../services/api";
 
-export default function SidebarFolders({ onSelectFolder, activeFolder }) {
+export default function SidebarFolders({ onSelectFolder, activeFolder, selectedFolderIds = [], onToggleFolderSelection }) {
   const [folders, setFolders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -81,7 +81,34 @@ export default function SidebarFolders({ onSelectFolder, activeFolder }) {
       <div className="sidebar-header">
         <div>
           <p className="section-kicker">Workspace</p>
-          <h3>Semantic Folders</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3>Semantic Folders</h3>
+            {selectedFolderIds.length > 0 && (
+              <span 
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '24px',
+                  height: '24px',
+                  paddingLeft: '6px',
+                  paddingRight: '6px',
+                  borderRadius: '999px',
+                  background: 'var(--primary)',
+                  color: '#1c1406',
+                  fontSize: '0.65rem',
+                  fontWeight: '800',
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  flexShrink: 0,
+                  boxShadow: '0 0 8px rgba(214, 168, 61, 0.4)',
+                }}
+                title={`${selectedFolderIds.length} folder${selectedFolderIds.length > 1 ? 's' : ''} selected`}
+              >
+                {selectedFolderIds.length}
+              </span>
+            )}
+          </div>
         </div>
         <div className="sidebar-actions">
           <button
@@ -117,48 +144,74 @@ export default function SidebarFolders({ onSelectFolder, activeFolder }) {
         </div>
       ) : (
         <nav className="folders-list">
-          {folders.map((folder) => (
-            <div key={folder.id} className="folder-item">
-              <button
-                className={`folder-button ${activeFolder?.id === folder.id ? "active" : ""} ${
-                  expandedFolder?.id === folder.id ? "expanded" : ""
-                }`}
-                onClick={() => toggleFolder(folder)}
-                type="button"
-              >
-                <span className="folder-icon">📁</span>
-                <span className="folder-name">{folder.name}</span>
-                <span className="folder-toggle">
-                  {expandedFolder?.id === folder.id ? "▼" : "▶"}
-                </span>
-              </button>
-
-              {expandedFolder?.id === folder.id && (
-                <div className="folder-documents">
-                  {isFolderLoading ? (
-                    <p className="sidebar-loading">Loading documents...</p>
-                  ) : folderDocuments.length === 0 ? (
-                    <p className="empty-state compact">No documents in this folder</p>
-                  ) : (
-                    <ul className="documents-list">
-                      {folderDocuments.map((doc) => (
-                        <li key={doc.document_id}>
-                          <button
-                            className="document-button"
-                            onClick={() => onSelectFolder(doc)}
-                            type="button"
-                            title={doc.file_name}
-                          >
-                            {doc.file_name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+          {folders.map((folder) => {
+            const isSelected = selectedFolderIds.includes(folder.id);
+            const isOpen = expandedFolder?.id === folder.id;
+            const isActive = activeFolder?.id === folder.id;
+            return (
+              <div key={folder.id} className="folder-item">
+                {/* ── Row: checkbox + navigation ── */}
+                <div className="folder-row">
+                  {/* ── Retrieval scope toggle: checkbox on left ── */}
+                  {onToggleFolderSelection && (
+                    <button
+                      className={`scope-toggle ${isSelected ? "selected" : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFolderSelection(folder.id);
+                      }}
+                      type="button"
+                      title={isSelected ? "Deselect from retrieval scope" : "Select for retrieval scope"}
+                      aria-pressed={isSelected}
+                      aria-label={`${isSelected ? "Deselect" : "Select"} ${folder.name} for retrieval scope`}
+                    >
+                      {isSelected ? "✓" : "○"}
+                    </button>
                   )}
+
+                  {/* ── Navigation row: opens/closes folder ── */}
+                  <button
+                    className={`folder-button ${isActive ? "active" : ""} ${isOpen ? "expanded" : ""} ${isSelected ? "selected" : ""}`}
+                    onClick={() => toggleFolder(folder)}
+                    type="button"
+                    title={isOpen ? "Collapse folder" : "Open folder"}
+                  >
+                    <span className="folder-icon">{isOpen ? "📂" : "📁"}</span>
+                    <span className="folder-name">{folder.name}</span>
+                    {isSelected && <span className="folder-selected-badge">selected</span>}
+                    <span className="folder-toggle">
+                      {isOpen ? "▼" : "▶"}
+                    </span>
+                  </button>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {isOpen && (
+                  <div className="folder-documents">
+                    {isFolderLoading ? (
+                      <p className="sidebar-loading">Loading documents...</p>
+                    ) : folderDocuments.length === 0 ? (
+                      <p className="empty-state compact">No documents in this folder</p>
+                    ) : (
+                      <ul className="documents-list">
+                        {folderDocuments.map((doc) => (
+                          <li key={doc.document_id}>
+                            <button
+                              className="document-button"
+                              onClick={() => onSelectFolder(doc)}
+                              type="button"
+                              title={doc.file_name}
+                            >
+                              {doc.file_name}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
       )}
 

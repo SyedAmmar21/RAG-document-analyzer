@@ -42,6 +42,11 @@ export default function Home() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
 
+  // ── Retrieval Scope State (Phase 1: architecture only) ──
+  const [scopeType, setScopeType] = useState("global");
+  const [selectedFolderIds, setSelectedFolderIds] = useState([]);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState([]);
+
   const handleUseDocument = async (document) => {
     setDocumentId(document.document_id);
     setDocumentName(document.file_name);
@@ -94,6 +99,49 @@ export default function Home() {
     setDomainSuggestion(null);
   };
 
+  // ── Retrieval Scope Helpers (Phase 2: fixed) ──
+  const toggleFolderSelection = (folderId) => {
+    setSelectedFolderIds((prev) => {
+      const next = prev.includes(folderId)
+        ? prev.filter((id) => id !== folderId)
+        : [...prev, folderId];
+      // Only update scopeType when document selection is empty
+      if (selectedDocumentIds.length === 0) {
+        setScopeType(next.length > 0 ? "folders" : "global");
+      }
+      return next;
+    });
+  };
+
+  const toggleDocumentSelection = (docId) => {
+    setSelectedDocumentIds((prev) => {
+      const next = prev.includes(docId)
+        ? prev.filter((id) => id !== docId)
+        : [...prev, docId];
+      // scopeType priority: documents > folders > global
+      if (next.length > 0) {
+        setScopeType("documents");
+      } else if (selectedFolderIds.length > 0) {
+        setScopeType("folders");
+      } else {
+        setScopeType("global");
+      }
+      return next;
+    });
+  };
+
+  const getScopeLabel = () => {
+    if (selectedDocumentIds.length > 0) {
+      return `📄 Searching ${selectedDocumentIds.length} Document${selectedDocumentIds.length > 1 ? "s" : ""}`;
+    }
+    if (selectedFolderIds.length > 0) {
+      return `📁 Searching ${selectedFolderIds.length} Folder${selectedFolderIds.length > 1 ? "s" : ""}`;
+    }
+    return "🌐 Searching All Documents";
+  };
+
+  const scopeLabel = getScopeLabel();
+
   return (
     <main className="app-shell">
       <section className="hero-panel" aria-labelledby="page-title">
@@ -124,7 +172,12 @@ export default function Home() {
       </nav>
 
       <section className="semantic-workspace" aria-label="Gold analyst workspace" hidden={activeTab !== "main"}>
-        <SidebarFolders onSelectFolder={handleUseDocument} activeFolder={{ id: documentId }} />
+        <SidebarFolders
+          onSelectFolder={handleUseDocument}
+          activeFolder={{ id: documentId }}
+          selectedFolderIds={selectedFolderIds}
+          onToggleFolderSelection={toggleFolderSelection}
+        />
         <div className="workspace-chat-area">
           <ChatWindow
             key={documentId || "no-document"}
@@ -132,6 +185,9 @@ export default function Home() {
             documentName={documentName}
             onUploadClick={() => setIsUploadModalOpen(true)}
             onViewMetadata={() => setIsMetadataModalOpen(true)}
+            scopeLabel={scopeLabel}
+            selectedDocumentIds={selectedDocumentIds}
+            onToggleDocumentSelection={toggleDocumentSelection}
           />
         </div>
       </section>
