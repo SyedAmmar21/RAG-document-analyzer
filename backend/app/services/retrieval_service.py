@@ -13,31 +13,44 @@ es = Elasticsearch(
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 
-#knn search
-def search_documents(query: str, document_id: str, top_k: int = 8):
+# knn search
+def search_documents(
+    query: str,
+    document_id: str | None = None,
+    top_k: int = 8
+):
     # Embed query
     query_vector = embeddings.embed_query(query)
 
-    # kNN query
+    # Base kNN query
     knn_query = {
         "knn": {
             "field": "embedding",
             "query_vector": query_vector,
             "k": top_k,
             "num_candidates": top_k * 8,
-            "filter": {
-                "term": {
-                    "document_id": document_id
-                }
-            }
         }
     }
 
-    response = es.search(index="documents", body=knn_query)
+    # ONLY filter if a document_id exists
+    if document_id:
+        knn_query["knn"]["filter"] = {
+            "term": {
+                "document_id": document_id
+            }
+        }
+
+    response = es.search(
+        index="documents",
+        body=knn_query
+    )
 
     hits = response["hits"]["hits"]
 
     # Extract results
-    results = [hit["_source"]["text"] for hit in hits]
+    results = [
+        hit["_source"]["text"]
+        for hit in hits
+    ]
 
     return results
