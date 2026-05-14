@@ -1,8 +1,11 @@
+from urllib import request
+
 from fastapi import APIRouter
 from pydantic import BaseModel
-
 from app.services.rag_agent_service import get_rag_agent
 from app.services.document_service import add_ai_response
+
+from app.services.domain_service import get_documents_by_domain
 
 router = APIRouter()
 
@@ -32,8 +35,57 @@ class FieldSearchRequest(BaseModel):
 # Endpoint
 @router.post("/query")
 async def query_agent(request: QueryRequest):
-    # Create agent for specific document
-    agent = get_rag_agent(request.document_id)
+    print("FULL REQUEST:", request.model_dump())
+    # GLOBAL mode
+    if request.scope_type == "global":
+        agent = get_rag_agent()
+
+    # FOLDER mode
+    elif request.scope_type == "folders":
+        all_document_ids = []
+
+        for folder_id in request.folder_ids:
+
+            print("PROCESSING FOLDER:", folder_id)
+
+            # Handle synthetic unorganized folder
+            if str(folder_id) == "unorganized":
+                continue
+
+            try:
+                documents = get_documents_by_domain(
+                    int(folder_id)
+                )
+
+                print("FOUND DOCUMENTS:", documents)
+
+                for document in documents:
+                    document_id = document["document_id"]
+
+                    if document_id not in all_document_ids:
+                        all_document_ids.append(document_id)
+
+            except Exception as e:
+                print("FOLDER ERROR:", e)
+
+        print("FOLDER IDS:", request.folder_ids)
+        print("RESOLVED DOC IDS:", all_document_ids)
+
+        agent = get_rag_agent(
+            document_ids=all_document_ids
+        )
+
+    # DOCUMENT mode
+    elif request.scope_type == "documents":
+        agent = get_rag_agent(
+            document_ids=request.document_ids
+        )
+
+    # FALLBACK single-document compatibility
+    else:
+        agent = get_rag_agent(
+            document_id=request.document_id
+        )
 
     # Run agent
     response = agent.invoke({

@@ -6,7 +6,7 @@ from app.services.retrieval_service import search_documents
 
 
 # tools
-def create_tools(document_id, llm):
+def create_tools(document_id, llm,document_ids=None):
 
     # tool 1
     @tool
@@ -15,7 +15,7 @@ def create_tools(document_id, llm):
         Search relevant document chunks from Elasticsearch based on the user's query.
         Use this tool for general questions about the document.
         """
-        results = search_documents(query, document_id=document_id, top_k=4)
+        results = search_documents(query, document_id=document_id, document_ids=document_ids, top_k=4)
         return "\n\n".join(results)
 
 
@@ -28,7 +28,7 @@ def create_tools(document_id, llm):
         """
 
         # get more chunks for better summary
-        results = search_documents(query, document_id=document_id, top_k=8)
+        results = search_documents(query, document_id=document_id, document_ids=document_ids, top_k=8)
         context = "\n\n".join(results)
 
         prompt = f"""
@@ -56,10 +56,10 @@ User Request:
 
 
 # agent
-def get_rag_agent(document_id: str):
+def get_rag_agent(document_id: str | None = None, document_ids: list[str] | None = None):
     llm = ChatOpenAI(model="gpt-5.4-nano")
 
-    tools = create_tools(document_id, llm)
+    tools = create_tools(llm=llm, document_id=document_id, document_ids=document_ids)
 
     agent = create_agent(
         model=llm,

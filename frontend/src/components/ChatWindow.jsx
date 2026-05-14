@@ -2,7 +2,7 @@ import { useState } from "react";
 import { queryAgent } from "../services/api";
 import MarkdownMessage from "./MarkdownMessage";
 
-export default function ChatWindow({ documentId, documentName, onUploadClick, onViewMetadata, scopeLabel, selectedFolderIds = [], selectedDocumentIds = [], onToggleFolderSelection, onToggleDocumentSelection }) {
+export default function ChatWindow({ documentId, documentName, onUploadClick, onViewMetadata, scopeType, scopeLabel, selectedFolderIds = [], selectedDocumentIds = [], onToggleFolderSelection, onToggleDocumentSelection }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
@@ -27,12 +27,7 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
        document_id: documentId,
 
        // NEW retrieval scope architecture
-       scope_type:
-        selectedDocumentIds.length > 0
-          ? "documents"
-          : selectedFolderIds.length > 0
-          ? "folders"
-          : "global",
+       scope_type: scopeType,
 
        folder_ids: selectedFolderIds,
        document_ids: selectedDocumentIds,
@@ -96,7 +91,7 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
           <div className="scope-chips">
             {selectedFolderIds.slice(0, 3).map((id) => (
               <span key={id} className="scope-chip scope-chip-folder" title={`Folder: ${id}`}>
-                📁 {id.slice(0, 12)}…
+                📁 {String(id).slice(0, 12)}…
                 <button
                   className="chip-remove"
                   onClick={() => onToggleFolderSelection(id)}

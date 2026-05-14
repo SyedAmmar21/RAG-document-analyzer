@@ -180,13 +180,16 @@ export default function Home() {
         />
         <div className="workspace-chat-area">
           <ChatWindow
-            key={documentId || "no-document"}
             documentId={documentId}
             documentName={documentName}
             onUploadClick={() => setIsUploadModalOpen(true)}
             onViewMetadata={() => setIsMetadataModalOpen(true)}
+            scopeType={scopeType}
             scopeLabel={scopeLabel}
-            selectedDocumentIds={selectedDocumentIds}
+            
+            selectedFolderIds={selectedFolderIds || []}
+            selectedDocumentIds={selectedDocumentIds || []}
+
             onToggleDocumentSelection={toggleDocumentSelection}
           />
         </div>

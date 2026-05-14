@@ -17,6 +17,7 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 def search_documents(
     query: str,
     document_id: str | None = None,
+    document_ids: list[str] | None = None,
     top_k: int = 8
 ):
     # Embed query
@@ -32,11 +33,19 @@ def search_documents(
         }
     }
 
-    # ONLY filter if a document_id exists
+    # SINGLE document retrieval
     if document_id:
         knn_query["knn"]["filter"] = {
             "term": {
                 "document_id": document_id
+            }
+        }
+
+    # MULTI-document retrieval
+    elif document_ids:
+        knn_query["knn"]["filter"] = {
+            "terms": {
+                "document_id": document_ids
             }
         }
 
