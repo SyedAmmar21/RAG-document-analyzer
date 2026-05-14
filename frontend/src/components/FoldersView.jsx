@@ -251,7 +251,9 @@ export default function FoldersView({onUseDocument,}) {
           {folders.map((folder) => (
             <div key={folder.id} className="folder-card">
               <div className="folder-card-top">
-                <div className="folder-icon">📁</div>
+                <div className="folder-icon">
+                  {folder.id === "unorganized" ? "📋" : "📁"}
+                </div>
 
                 <div className="folder-meta">
                   <h3>{folder.name}</h3>

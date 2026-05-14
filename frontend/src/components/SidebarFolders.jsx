@@ -176,7 +176,12 @@ export default function SidebarFolders({ onSelectFolder, activeFolder, selectedF
                     type="button"
                     title={isOpen ? "Collapse folder" : "Open folder"}
                   >
-                    <span className="folder-icon">{isOpen ? "📂" : "📁"}</span>
+                    <span className="folder-icon">
+                      {folder.id === "unorganized" 
+                        ? (isOpen ? "📋" : "📋")
+                        : (isOpen ? "📂" : "📁")
+                      }
+                    </span>
                     <span className="folder-name">{folder.name}</span>
                     {isSelected && <span className="folder-selected-badge">selected</span>}
                     <span className="folder-toggle">

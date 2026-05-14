@@ -32,7 +32,7 @@ ORDER BY d.name ASC
     rows = cursor.fetchall()
     conn.close()
 
-    return [
+    domains = [
         {
             "id": row["id"],
             "name": row["name"],
@@ -42,6 +42,19 @@ ORDER BY d.name ASC
         }
         for row in rows
     ]
+
+    # Add "Unorganized Files" as a synthetic fallback folder
+    unorganized_count = count_unorganized_documents()
+    if unorganized_count > 0:
+        domains.append({
+            "id": "unorganized",
+            "name": "Unorganized Files",
+            "description": "Documents without semantic domain assignment",
+            "created_date": None,
+            "document_count": unorganized_count,
+        })
+
+    return domains
 
 
 def create_domain(name: str, description: Optional[str] = None):
@@ -228,3 +241,55 @@ def get_documents_by_domain(domain_id: int):
         }
         for row in rows
     ]
+
+
+def get_unorganized_documents():
+    """
+    Get all documents that do NOT have a domain assignment.
+    These are documents without an entry in the document_domains table.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        d.id,
+        d.file_path,
+        d.created_date
+    FROM documents d
+    WHERE d.id NOT IN (
+        SELECT DISTINCT document_id FROM document_domains
+    )
+    ORDER BY d.created_date DESC
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "document_id": row["id"],
+            "file_name": os.path.basename(row["file_path"]),
+            "file_path": row["file_path"],
+            "created_date": row["created_date"],
+        }
+        for row in rows
+    ]
+
+
+def count_unorganized_documents():
+    """Count documents without domain assignments."""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT COUNT(*) as count FROM documents d
+    WHERE d.id NOT IN (
+        SELECT DISTINCT document_id FROM document_domains
+    )
+    """)
+
+    row = cursor.fetchone()
+    conn.close()
+
+    return row["count"] if row else 0

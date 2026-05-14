@@ -14,6 +14,7 @@ from app.services.domain_service import (
     get_all_domains,
     get_document_domain,
     get_domain_by_id,
+    get_unorganized_documents,
 )
 from app.services.metadata_service import get_metadata as get_saved_metadata, save_metadata
 from app.services.domain_service import get_documents_by_domain
@@ -179,13 +180,32 @@ async def list_domains():
     return {"domains": get_all_domains()}
 
 @router.get("/domains/{domain_id}/documents")
-async def get_domain_documents(domain_id: int):
-    domain = get_domain_by_id(domain_id)
+async def get_domain_documents(domain_id: str):
+    # Handle special "unorganized" case
+    if domain_id == "unorganized":
+        documents = get_unorganized_documents()
+        return {
+            "domain": {
+                "id": "unorganized",
+                "name": "Unorganized Files",
+                "description": "Documents without semantic domain assignment",
+                "created_date": None,
+            },
+            "documents": documents,
+        }
+
+    # Handle regular numeric domain IDs
+    try:
+        domain_id_int = int(domain_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid domain ID")
+
+    domain = get_domain_by_id(domain_id_int)
 
     if not domain:
         raise HTTPException(status_code=404, detail="Domain not found")
 
-    documents = get_documents_by_domain(domain_id)
+    documents = get_documents_by_domain(domain_id_int)
 
     return {
         "domain": domain,
