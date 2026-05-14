@@ -13,11 +13,6 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
 
     if (!trimmedQuery) return;
 
-    if (!documentId) {
-      setError("Upload a document first so the assistant has a source.");
-      return;
-    }
-
     const userMessage = { role: "user", text: trimmedQuery };
     setMessages((currentMessages) => [...currentMessages, userMessage]);
     setQuery("");
@@ -25,7 +20,24 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
     setIsSending(true);
 
     try {
-      const res = await queryAgent(trimmedQuery, documentId);
+      const res = await queryAgent({
+       query: trimmedQuery,
+
+       // temporary compatibility
+       document_id: documentId,
+
+       // NEW retrieval scope architecture
+       scope_type:
+        selectedDocumentIds.length > 0
+          ? "documents"
+          : selectedFolderIds.length > 0
+          ? "folders"
+          : "global",
+
+       folder_ids: selectedFolderIds,
+       document_ids: selectedDocumentIds,
+      });
+
       setMessages((currentMessages) => [
         ...currentMessages,
         { role: "ai", text: res.answer || "I could not find an answer in this document." },
@@ -158,7 +170,7 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask about gold's status today, gold drivers, or market risks..."
-          disabled={!documentId || isSending}
+          disabled={isSending}
           rows="3"
         />
         <div className="character-counter">
@@ -177,7 +189,7 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
           <button
             className="primary-button"
             onClick={handleSend}
-            disabled={!documentId || isSending || !query.trim()}
+            disabled={isSending || !query.trim()}
           >
             {isSending ? "Sending..." : "Send"}
           </button>

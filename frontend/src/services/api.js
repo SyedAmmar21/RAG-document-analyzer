@@ -22,15 +22,31 @@ export const uploadFile = async (file) => {
   return parseResponse(res);
 };
 
-export const queryAgent = async (query, document_id) => {
+// UPDATED: Retrieval scope-aware query request
+export const queryAgent = async ({
+  query,
+  document_id = null,
+
+  // NEW retrieval scope fields
+  scope_type = "global",
+  folder_ids = [],
+  document_ids = [],
+}) => {
   const res = await fetch(`${BASE_URL}/query`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
+
+    // UPDATED payload
     body: JSON.stringify({
       query,
       document_id,
+
+      // NEW
+      scope_type,
+      folder_ids,
+      document_ids,
     }),
   });
 

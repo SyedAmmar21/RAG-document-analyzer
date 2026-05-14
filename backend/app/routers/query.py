@@ -8,10 +8,22 @@ router = APIRouter()
 
 
 # Request schema
+from typing import Optional
+from pydantic import BaseModel
+
+
 class QueryRequest(BaseModel):
     query: str
-    document_id: str
 
+    # OLD compatibility field
+    document_id: Optional[str] = None
+
+    # NEW retrieval scope architecture
+    scope_type: str = "global"
+
+    folder_ids: list[int] = []
+
+    document_ids: list[str] = []
 
 class FieldSearchRequest(BaseModel):
     fields: list[str]
