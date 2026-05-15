@@ -71,6 +71,12 @@ export default function Home() {
     }
   };
 
+  const handleUseScopedDocument = (document) => {
+    setSelectedDocumentIds([document.document_id]);
+    setScopeType("documents");
+    handleUseDocument(document);
+  };
+
   const handleDeleteDocument = (deletedDocumentId) => {
     if (deletedDocumentId === documentId) {
       setDocumentId(null);
@@ -78,6 +84,20 @@ export default function Home() {
       setMetadataSuggestions(null);
       setDomainSuggestion(null);
     }
+
+    setSelectedDocumentIds((prev) => {
+      const next = prev.filter((id) => id !== deletedDocumentId);
+
+      if (next.length > 0) {
+        setScopeType("documents");
+      } else if (selectedFolderIds.length > 0) {
+        setScopeType("folders");
+      } else {
+        setScopeType("global");
+      }
+
+      return next;
+    });
   };
 
   const handleUploadSuccess = (uploadData) => {
@@ -85,6 +105,8 @@ export default function Home() {
     setDocumentName(uploadData.file_name);
     setMetadataSuggestions(uploadData.metadata_suggestions);
     setDomainSuggestion(uploadData.domain_suggestion);
+    setSelectedDocumentIds([uploadData.document_id]);
+    setScopeType("documents");
     setIsUploadModalOpen(false);
     
     // Show metadata modal if metadata was extracted
@@ -173,7 +195,7 @@ export default function Home() {
 
       <section className="semantic-workspace" aria-label="Gold analyst workspace" hidden={activeTab !== "main"}>
         <SidebarFolders
-          onSelectFolder={handleUseDocument}
+          onSelectFolder={handleUseScopedDocument}
           activeFolder={{ id: documentId }}
           selectedFolderIds={selectedFolderIds}
           onToggleFolderSelection={toggleFolderSelection}
@@ -198,7 +220,7 @@ export default function Home() {
       <div hidden={activeTab !== "repo"}>
         <DocumentRepository
           activeDocumentId={documentId}
-          onUseDocument={handleUseDocument}
+          onUseDocument={handleUseScopedDocument}
           onDeleteDocument={handleDeleteDocument}
         />
       </div>

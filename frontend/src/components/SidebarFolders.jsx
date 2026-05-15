@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getDomains, getFolderDocuments, createDomain } from "../services/api";
 
-export default function SidebarFolders({ onSelectFolder, activeFolder, selectedFolderIds = [], onToggleFolderSelection }) {
+export default function SidebarFolders({
+  onSelectFolder,
+  activeFolder,
+  selectedFolderIds = [],
+  onToggleFolderSelection,
+}) {
   const [folders, setFolders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -13,11 +18,7 @@ export default function SidebarFolders({ onSelectFolder, activeFolder, selectedF
   const [newFolderDescription, setNewFolderDescription] = useState("");
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
-  useEffect(() => {
-    loadFolders();
-  }, []);
-
-  const loadFolders = async () => {
+  const loadFolders = useCallback(async () => {
     setIsLoading(true);
     setError("");
 
@@ -29,7 +30,13 @@ export default function SidebarFolders({ onSelectFolder, activeFolder, selectedF
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadFolders, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadFolders]);
 
   const toggleFolder = async (folder) => {
     if (expandedFolder?.id === folder.id) {

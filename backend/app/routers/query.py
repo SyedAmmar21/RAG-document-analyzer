@@ -35,7 +35,6 @@ class FieldSearchRequest(BaseModel):
 # Endpoint
 @router.post("/query")
 async def query_agent(request: QueryRequest):
-    print("FULL REQUEST:", request.model_dump())
     # GLOBAL mode
     if request.scope_type == "global":
         agent = get_rag_agent()
@@ -57,7 +56,6 @@ async def query_agent(request: QueryRequest):
                     int(folder_id)
                 )
 
-                print("FOUND DOCUMENTS:", documents)
 
                 for document in documents:
                     document_id = document["document_id"]
@@ -68,8 +66,6 @@ async def query_agent(request: QueryRequest):
             except Exception as e:
                 print("FOLDER ERROR:", e)
 
-        print("FOLDER IDS:", request.folder_ids)
-        print("RESOLVED DOC IDS:", all_document_ids)
 
         agent = get_rag_agent(
             document_ids=all_document_ids
@@ -96,8 +92,6 @@ async def query_agent(request: QueryRequest):
 
     # Extract answer
     answer = response["messages"][-1].content
-
-    print("SAVING RESPONSE:", request.document_id)
 
     #  SAVE AI RESPONSE INTO DB
     add_ai_response(

@@ -30,7 +30,12 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
        scope_type: scopeType,
 
        folder_ids: selectedFolderIds,
-       document_ids: selectedDocumentIds,
+       document_ids:   
+        selectedDocumentIds.length > 0
+          ? selectedDocumentIds
+          : documentId
+          ? [documentId]
+          : [],
       });
 
       setMessages((currentMessages) => [

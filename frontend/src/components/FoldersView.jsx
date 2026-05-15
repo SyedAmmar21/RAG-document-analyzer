@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { getDomains, getFolderDocuments, createDomain} from "../services/api";
 
-export default function FoldersView({onUseDocument,}) {
+export default function FoldersView({
+  onUseDocument,
+  onToggleDocumentSelection,
+  }) {
   const [folders, setFolders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -228,7 +231,10 @@ export default function FoldersView({onUseDocument,}) {
                   <button
                     className="secondary-button compact-button"
                     type="button"
-                    onClick={() => onUseDocument(document)}
+                    onClick={() => {
+                      onUseDocument(document);
+                      onToggleDocumentSelection(document.document_id);
+                    }}
                   >
                     Open Document
                   </button>
