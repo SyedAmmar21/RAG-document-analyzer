@@ -1,3 +1,6 @@
+from multiprocessing import context
+from unittest import result
+
 from langchain.tools import tool
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
@@ -6,7 +9,7 @@ from app.services.retrieval_service import search_documents
 
 
 # tools
-def create_tools(document_id, llm,document_ids=None):
+def create_tools(llm, document_id=None, document_ids=None):
 
     # tool 1
     @tool
@@ -16,7 +19,24 @@ def create_tools(document_id, llm,document_ids=None):
         Use this tool for general questions about the document.
         """
         results = search_documents(query, document_id=document_id, document_ids=document_ids, top_k=4)
-        return "\n\n".join(results)
+        if not results:
+            return "No relevant information found."
+
+        context = ""
+
+        for result in results:
+            document_name = result["document_name"]
+            text = result["text"]
+
+            context += f"""
+        DOCUMENT: {document_name}
+
+        {text}
+
+        --------------------
+        """
+
+        return context
 
 
     # 🔹 tool 2
@@ -29,7 +49,7 @@ def create_tools(document_id, llm,document_ids=None):
 
         # get more chunks for better summary
         results = search_documents(query, document_id=document_id, document_ids=document_ids, top_k=8)
-        context = "\n\n".join(results)
+        context = "\n\n".join([result["text"] for result in results])
 
         prompt = f"""
 You are an expert at summarizing documents.

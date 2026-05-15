@@ -281,7 +281,7 @@ export default function FoldersView({
                   type="button"
                   onClick={() => openFolder(folder)}
                 >
-                  Open Folder
+                  Open {folder.name}
                 </button>
               </div>
             </div>

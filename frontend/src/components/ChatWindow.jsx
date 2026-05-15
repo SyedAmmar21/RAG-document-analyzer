@@ -2,7 +2,16 @@ import { useState } from "react";
 import { queryAgent } from "../services/api";
 import MarkdownMessage from "./MarkdownMessage";
 
-export default function ChatWindow({ documentId, documentName, onUploadClick, onViewMetadata, scopeType, scopeLabel, selectedFolderIds = [], selectedDocumentIds = [], onToggleFolderSelection, onToggleDocumentSelection }) {
+export default function ChatWindow({
+  documentId,
+  onUploadClick,
+  scopeType,
+  scopeLabel,
+  selectedFolderIds = [],
+  selectedDocumentIds = [],
+  onToggleFolderSelection,
+  onToggleDocumentSelection,
+}) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
@@ -21,26 +30,16 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
 
     try {
       const res = await queryAgent({
-       query: trimmedQuery,
-
-       // temporary compatibility
-       document_id: documentId,
-
-       // NEW retrieval scope architecture
-       scope_type: scopeType,
-
-       folder_ids: selectedFolderIds,
-       document_ids:   
-        selectedDocumentIds.length > 0
-          ? selectedDocumentIds
-          : documentId
-          ? [documentId]
-          : [],
+        query: trimmedQuery,
+        document_id: documentId,
+        scope_type: scopeType,
+        folder_ids: selectedFolderIds,
+        document_ids: selectedDocumentIds,
       });
 
       setMessages((currentMessages) => [
         ...currentMessages,
-        { role: "ai", text: res.answer || "I could not find an answer in this document." },
+        { role: "ai", text: res.answer || "I could not find an answer in the selected workspace context." },
       ]);
     } catch (error) {
       setError(error.message || "The assistant could not answer right now.");
@@ -60,20 +59,18 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
     <section className="panel chat-panel" aria-labelledby="chat-title">
       <div className="panel-header">
         <div>
-          <p className="section-kicker">Hello User!</p>
-          <h2 id="chat-title">Ask the analyst</h2>
+          <p className="section-kicker">Workspace Assistant</p>
+          <h2 id="chat-title">Ask across your knowledge base</h2>
         </div>
-        <span className={documentId ? "badge success" : "badge"}>{documentId ? "Enabled" : "Locked"}</span>
       </div>
 
-      {/* ── Retrieval Scope Header (Phase 1) ── */}
       <div className="scope-header">
         <span className="scope-badge">{scopeLabel}</span>
         {selectedDocumentIds.length > 0 && (
           <div className="scope-chips">
             {selectedDocumentIds.slice(0, 3).map((id) => (
               <span key={id} className="scope-chip" title={`Document: ${id}`}>
-                📄 {id.slice(0, 10)}…
+                Doc {id.slice(0, 10)}...
                 <button
                   className="chip-remove"
                   onClick={() => onToggleDocumentSelection(id)}
@@ -81,14 +78,12 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
                   title="Remove from scope"
                   aria-label="Remove document"
                 >
-                  ✕
+                  x
                 </button>
               </span>
             ))}
             {selectedDocumentIds.length > 3 && (
-              <span className="scope-chip" style={{ background: 'rgba(214, 168, 61, 0.15)', borderColor: 'rgba(214, 168, 61, 0.25)' }}>
-                +{selectedDocumentIds.length - 3} more
-              </span>
+              <span className="scope-chip">+{selectedDocumentIds.length - 3} more</span>
             )}
           </div>
         )}
@@ -96,46 +91,22 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
           <div className="scope-chips">
             {selectedFolderIds.slice(0, 3).map((id) => (
               <span key={id} className="scope-chip scope-chip-folder" title={`Folder: ${id}`}>
-                📁 {String(id).slice(0, 12)}…
+                Folder {String(id).slice(0, 12)}...
                 <button
                   className="chip-remove"
-                  onClick={() => onToggleFolderSelection(id)}
+                  onClick={() => onToggleFolderSelection?.(id)}
                   type="button"
                   title="Remove from scope"
                   aria-label="Remove folder"
                 >
-                  ✕
+                  x
                 </button>
               </span>
             ))}
             {selectedFolderIds.length > 3 && (
-              <span className="scope-chip" style={{ background: 'rgba(116, 210, 162, 0.15)', borderColor: 'rgba(116, 210, 162, 0.25)' }}>
-                +{selectedFolderIds.length - 3} more
-              </span>
+              <span className="scope-chip">+{selectedFolderIds.length - 3} more</span>
             )}
           </div>
-        )}
-      </div>
-
-      <div className={documentId ? "chat-context active-source-banner" : "chat-context"}>
-        {documentId ? (
-          <>
-            <div className="source-info">
-              <span>Active source</span>
-              <strong>{documentName || "Uploaded document"}</strong>
-            </div>
-            <button
-              className="icon-button metadata-button"
-              onClick={onViewMetadata}
-              title="View document metadata"
-              aria-label="View document metadata"
-              type="button"
-            >
-              📋
-            </button>
-          </>
-        ) : (
-          "Upload or choose a market document to start a grounded gold-analysis conversation."
         )}
       </div>
 
@@ -143,7 +114,7 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
         {messages.length === 0 ? (
           <div className="empty-state">
             <strong>No analyst questions yet</strong>
-            <span>Ask about gold drivers, central-bank signals, macro risks, or market implications.</span>
+            <span>Ask about gold drivers, central-bank signals, macro risks, or compare selected documents.</span>
           </div>
         ) : (
           messages.map((msg, i) => (
@@ -157,19 +128,19 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
         {isSending && (
           <div className="message ai pending">
             <span className="message-label">Assistant</span>
-            <p>Reviewing the market document...</p>
+            <p>Searching the selected workspace context...</p>
           </div>
         )}
       </div>
 
       {error && <p className="error-text">{error}</p>}
 
-<div className="composer">
+      <div className="composer">
         <textarea
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about gold's status today, gold drivers, or market risks..."
+          placeholder="Ask across the workspace, selected folders, or selected documents..."
           disabled={isSending}
           rows="3"
         />
@@ -184,7 +155,7 @@ export default function ChatWindow({ documentId, documentName, onUploadClick, on
             aria-label="Attach document"
             type="button"
           >
-            📎
+            +
           </button>
           <button
             className="primary-button"

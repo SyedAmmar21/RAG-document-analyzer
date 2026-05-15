@@ -3,9 +3,10 @@ import { getDomains, getFolderDocuments, createDomain } from "../services/api";
 
 export default function SidebarFolders({
   onSelectFolder,
-  activeFolder,
   selectedFolderIds = [],
+  selectedDocumentIds = [],
   onToggleFolderSelection,
+  onViewMetadata,
 }) {
   const [folders, setFolders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -86,36 +87,14 @@ export default function SidebarFolders({
   return (
     <aside className="workspace-sidebar">
       <div className="sidebar-header">
-        <div>
+        <div className="sidebar-title-area">
           <p className="section-kicker">Workspace</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h3>Semantic Folders</h3>
-            {selectedFolderIds.length > 0 && (
-              <span 
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: '24px',
-                  height: '24px',
-                  paddingLeft: '6px',
-                  paddingRight: '6px',
-                  borderRadius: '999px',
-                  background: 'var(--primary)',
-                  color: '#1c1406',
-                  fontSize: '0.65rem',
-                  fontWeight: '800',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  flexShrink: 0,
-                  boxShadow: '0 0 8px rgba(214, 168, 61, 0.4)',
-                }}
-                title={`${selectedFolderIds.length} folder${selectedFolderIds.length > 1 ? 's' : ''} selected`}
-              >
-                {selectedFolderIds.length}
-              </span>
-            )}
-          </div>
+          <h3>Semantic Folders</h3>
+          {selectedFolderIds.length > 0 && (
+            <span className="selection-badge">
+              {selectedFolderIds.length} selected
+            </span>
+          )}
         </div>
         <div className="sidebar-actions">
           <button
@@ -125,7 +104,9 @@ export default function SidebarFolders({
             aria-label="Create new folder"
             type="button"
           >
-            +
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </button>
           <button
             className="icon-button"
@@ -135,7 +116,10 @@ export default function SidebarFolders({
             aria-label="Refresh folders"
             type="button"
           >
-            ↻
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M13.5 2v3.5h-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -143,23 +127,33 @@ export default function SidebarFolders({
       {error && <p className="error-text sidebar-error">{error}</p>}
 
       {isLoading && !folders.length ? (
-        <p className="sidebar-loading">Loading folders...</p>
+        <div className="sidebar-loading">
+          <span className="spinner" />
+          Loading folders...
+        </div>
       ) : folders.length === 0 ? (
         <div className="empty-state sidebar-empty">
+          <div className="empty-icon">📂</div>
           <strong>No folders yet</strong>
-          <span>Create a semantic folder to organize your documents</span>
+          <span>Tap + to create your first semantic folder</span>
         </div>
       ) : (
         <nav className="folders-list">
           {folders.map((folder) => {
             const isSelected = selectedFolderIds.includes(folder.id);
             const isOpen = expandedFolder?.id === folder.id;
-            const isActive = activeFolder?.id === folder.id;
+            const isUnorganized = folder.id === "unorganized";
+
             return (
-              <div key={folder.id} className="folder-item">
-                {/* ── Row: checkbox + navigation ── */}
-                <div className="folder-row">
-                  {/* ── Retrieval scope toggle: checkbox on left ── */}
+              <div
+                key={folder.id}
+                className={`folder-item ${isSelected ? "selected" : ""}`}
+              >
+                <button
+                  className="folder-row"
+                  onClick={() => toggleFolder(folder)}
+                  type="button"
+                >
                   {onToggleFolderSelection && (
                     <button
                       className={`scope-toggle ${isSelected ? "selected" : ""}`}
@@ -168,55 +162,61 @@ export default function SidebarFolders({
                         onToggleFolderSelection(folder.id);
                       }}
                       type="button"
-                      title={isSelected ? "Deselect from retrieval scope" : "Select for retrieval scope"}
-                      aria-pressed={isSelected}
-                      aria-label={`${isSelected ? "Deselect" : "Select"} ${folder.name} for retrieval scope`}
+                      title={isSelected ? "Remove from scope" : "Add to scope"}
                     >
                       {isSelected ? "✓" : "○"}
                     </button>
                   )}
 
-                  {/* ── Navigation row: opens/closes folder ── */}
-                  <button
-                    className={`folder-button ${isActive ? "active" : ""} ${isOpen ? "expanded" : ""} ${isSelected ? "selected" : ""}`}
-                    onClick={() => toggleFolder(folder)}
-                    type="button"
-                    title={isOpen ? "Collapse folder" : "Open folder"}
-                  >
-                    <span className="folder-icon">
-                      {folder.id === "unorganized" 
-                        ? (isOpen ? "📋" : "📋")
-                        : (isOpen ? "📂" : "📁")
-                      }
+                  <span className="folder-icon">
+                    {isUnorganized ? "📋" : (isOpen ? "📂" : "📁")}
+                  </span>
+
+                  <span className="folder-name" title={folder.name}>{folder.name}</span>
+                  {folder.document_count !== undefined && (
+                    <span className="doc-count">
+                      {folder.document_count}
                     </span>
-                    <span className="folder-name">{folder.name}</span>
-                    {isSelected && <span className="folder-selected-badge">selected</span>}
-                    <span className="folder-toggle">
-                      {isOpen ? "▼" : "▶"}
-                    </span>
-                  </button>
-                </div>
+                  )}
+
+                  <span className="expand-icon">
+                    {isOpen ? "▾" : "▸"}
+                  </span>
+                </button>
 
                 {isOpen && (
                   <div className="folder-documents">
                     {isFolderLoading ? (
-                      <p className="sidebar-loading">Loading documents...</p>
+                      <span className="sidebar-loading">Loading...</span>
                     ) : folderDocuments.length === 0 ? (
-                      <p className="empty-state compact">No documents in this folder</p>
+                      <span className="empty-hint">No documents</span>
                     ) : (
                       <ul className="documents-list">
-                        {folderDocuments.map((doc) => (
-                          <li key={doc.document_id}>
+                        {folderDocuments.map((doc) => {
+                          const isDocumentSelected = selectedDocumentIds.includes(doc.document_id);
+
+                          return (
+                            <li key={doc.document_id} className="folder-document-row">
                             <button
-                              className="document-button"
+                              className={`document-button ${isDocumentSelected ? "selected" : ""}`}
                               onClick={() => onSelectFolder(doc)}
                               type="button"
                               title={doc.file_name}
+                              aria-pressed={isDocumentSelected}
                             >
-                              {doc.file_name}
+                              <span className="doc-icon">📄</span>
+                              <span className="doc-name">{doc.file_name}</span>
                             </button>
-                          </li>
-                        ))}
+                            <button
+                              className="secondary-button document-metadata-button"
+                              type="button"
+                              onClick={() => onViewMetadata(doc)}
+                            >
+                              Metadata
+                            </button>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </div>
@@ -246,26 +246,27 @@ export default function SidebarFolders({
             </div>
 
             <p className="folder-modal-subtitle">
-              Create a semantic workspace folder powered by embeddings.
+              Organize documents into semantic collections powered by embeddings.
             </p>
 
             <div className="folder-form-group">
               <label>Folder Name</label>
               <input
+                autoFocus
                 type="text"
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="Example: Central Banks"
+                placeholder="e.g. Central Banks"
               />
             </div>
 
             <div className="folder-form-group">
-              <label>Description</label>
+              <label>Description <span className="optional">(optional)</span></label>
               <textarea
                 rows="3"
                 value={newFolderDescription}
                 onChange={(e) => setNewFolderDescription(e.target.value)}
-                placeholder="Describe the semantic focus of this folder..."
+                placeholder="What should this folder contain?"
               />
             </div>
 
@@ -280,7 +281,7 @@ export default function SidebarFolders({
               <button
                 className="primary-button"
                 onClick={createFolder}
-                disabled={isCreatingFolder}
+                disabled={isCreatingFolder || !newFolderName.trim()}
                 type="button"
               >
                 {isCreatingFolder ? "Creating..." : "Create Folder"}

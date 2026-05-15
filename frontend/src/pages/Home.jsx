@@ -35,7 +35,7 @@ function rowsToMetadataSuggestions(rows) {
 
 export default function Home() {
   const [documentId, setDocumentId] = useState(null);
-  const [documentName, setDocumentName] = useState("");
+  const [metadataDocumentId, setMetadataDocumentId] = useState(null);
   const [metadataSuggestions, setMetadataSuggestions] = useState(null);
   const [domainSuggestion, setDomainSuggestion] = useState(null);
   const [activeTab, setActiveTab] = useState("main");
@@ -47,14 +47,9 @@ export default function Home() {
   const [selectedFolderIds, setSelectedFolderIds] = useState([]);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState([]);
 
-  const handleUseDocument = async (document) => {
-    setDocumentId(document.document_id);
-    setDocumentName(document.file_name);
-    setMetadataSuggestions(null);
-    setDomainSuggestion(null);
-
+  const loadMetadataForDocument = async (docId) => {
     try {
-      const res = await getDocumentMetadata(document.document_id);
+      const res = await getDocumentMetadata(docId);
       setMetadataSuggestions(rowsToMetadataSuggestions(res.metadata || []));
       setDomainSuggestion(res.domain || null);
     } catch {
@@ -71,18 +66,51 @@ export default function Home() {
     }
   };
 
-  const handleUseScopedDocument = (document) => {
-    setSelectedDocumentIds([document.document_id]);
-    setScopeType("documents");
+  const handleUseDocument = (document) => {
+    setDocumentId(document.document_id);
+  };
+
+  const handleViewDocumentMetadata = (document) => {
+    setMetadataDocumentId(document.document_id);
+    setMetadataSuggestions(null);
+    setDomainSuggestion(null);
+    setIsMetadataModalOpen(true);
+    loadMetadataForDocument(document.document_id);
+  };
+
+  const toggleDocumentSelection = (docId) => {
+    setSelectedDocumentIds((prev) => {
+      const next = prev.includes(docId)
+        ? prev.filter((id) => id !== docId)
+        : [...prev, docId];
+
+      if (next.length > 0) {
+        setScopeType("documents");
+      } else if (selectedFolderIds.length > 0) {
+        setScopeType("folders");
+      } else {
+        setScopeType("global");
+      }
+
+      return next;
+    });
+  };
+
+  const handleToggleScopedDocument = (document) => {
+    toggleDocumentSelection(document.document_id);
     handleUseDocument(document);
   };
 
   const handleDeleteDocument = (deletedDocumentId) => {
     if (deletedDocumentId === documentId) {
       setDocumentId(null);
-      setDocumentName("");
+    }
+
+    if (deletedDocumentId === metadataDocumentId) {
+      setMetadataDocumentId(null);
       setMetadataSuggestions(null);
       setDomainSuggestion(null);
+      setIsMetadataModalOpen(false);
     }
 
     setSelectedDocumentIds((prev) => {
@@ -102,7 +130,7 @@ export default function Home() {
 
   const handleUploadSuccess = (uploadData) => {
     setDocumentId(uploadData.document_id);
-    setDocumentName(uploadData.file_name);
+    setMetadataDocumentId(uploadData.document_id);
     setMetadataSuggestions(uploadData.metadata_suggestions);
     setDomainSuggestion(uploadData.domain_suggestion);
     setSelectedDocumentIds([uploadData.document_id]);
@@ -135,23 +163,6 @@ export default function Home() {
     });
   };
 
-  const toggleDocumentSelection = (docId) => {
-    setSelectedDocumentIds((prev) => {
-      const next = prev.includes(docId)
-        ? prev.filter((id) => id !== docId)
-        : [...prev, docId];
-      // scopeType priority: documents > folders > global
-      if (next.length > 0) {
-        setScopeType("documents");
-      } else if (selectedFolderIds.length > 0) {
-        setScopeType("folders");
-      } else {
-        setScopeType("global");
-      }
-      return next;
-    });
-  };
-
   const getScopeLabel = () => {
     if (selectedDocumentIds.length > 0) {
       return `📄 Searching ${selectedDocumentIds.length} Document${selectedDocumentIds.length > 1 ? "s" : ""}`;
@@ -173,15 +184,11 @@ export default function Home() {
             <p className="eyebrow">Gold market intelligence workspace</p>
             <h1 id="page-title">Gold Analyst Helper</h1>
             <p className="hero-copy">
-              Upload market notes, news, or reports, then extract metadata and ask grounded gold-analysis questions.
+              Query market notes, news, and reports across global, folder, or document-scoped research contexts.
             </p>
           </div>
         </div>
 
-        <div className={documentId ? "status-pill ready" : "status-pill"}>
-          <span aria-hidden="true" />
-          {documentId ? "Document ready" : "Awaiting upload"}
-        </div>
       </section>
 
       <nav className="tab-list" aria-label="Primary workspace tabs">
@@ -195,17 +202,16 @@ export default function Home() {
 
       <section className="semantic-workspace" aria-label="Gold analyst workspace" hidden={activeTab !== "main"}>
         <SidebarFolders
-          onSelectFolder={handleUseScopedDocument}
-          activeFolder={{ id: documentId }}
+          onSelectFolder={handleToggleScopedDocument}
           selectedFolderIds={selectedFolderIds}
+          selectedDocumentIds={selectedDocumentIds}
           onToggleFolderSelection={toggleFolderSelection}
+          onViewMetadata={handleViewDocumentMetadata}
         />
         <div className="workspace-chat-area">
           <ChatWindow
             documentId={documentId}
-            documentName={documentName}
             onUploadClick={() => setIsUploadModalOpen(true)}
-            onViewMetadata={() => setIsMetadataModalOpen(true)}
             scopeType={scopeType}
             scopeLabel={scopeLabel}
             
@@ -213,14 +219,16 @@ export default function Home() {
             selectedDocumentIds={selectedDocumentIds || []}
 
             onToggleDocumentSelection={toggleDocumentSelection}
+            onToggleFolderSelection={toggleFolderSelection}
           />
         </div>
       </section>
 
       <div hidden={activeTab !== "repo"}>
         <DocumentRepository
-          activeDocumentId={documentId}
-          onUseDocument={handleUseScopedDocument}
+          selectedDocumentIds={selectedDocumentIds}
+          onUseDocument={handleToggleScopedDocument}
+          onViewMetadata={handleViewDocumentMetadata}
           onDeleteDocument={handleDeleteDocument}
         />
       </div>
@@ -234,7 +242,7 @@ export default function Home() {
       <MetadataModal
         isOpen={isMetadataModalOpen}
         onClose={() => setIsMetadataModalOpen(false)}
-        documentId={documentId}
+        documentId={metadataDocumentId}
         metadataSuggestions={metadataSuggestions}
         domainSuggestion={domainSuggestion}
         onMetadataSaved={handleMetadataSaved}

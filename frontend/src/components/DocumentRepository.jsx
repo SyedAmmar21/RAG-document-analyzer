@@ -19,7 +19,12 @@ function formatSavedTime(value) {
   }).format(date);
 }
 
-export default function DocumentRepository({ activeDocumentId, onUseDocument, onDeleteDocument }) {
+export default function DocumentRepository({
+  selectedDocumentIds = [],
+  onUseDocument,
+  onViewMetadata,
+  onDeleteDocument,
+}) {
   const [documents, setDocuments] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState("");
@@ -132,36 +137,47 @@ export default function DocumentRepository({ activeDocumentId, onUseDocument, on
                 <td colSpan="7">No documents match your search.</td>
               </tr>
             ) : (
-              visibleDocuments.map((document) => (
-                <tr key={document.document_id}>
-                  <td>{document.number}</td>
-                  <td>{document.document_id}</td>
-                  <td>{document.file_name}</td>
-                  <td>{document.file_path}</td>
-                  <td>{document.status}</td>
-                  <td title={document.created_date}>{formatSavedTime(document.created_date)}</td>
-                  <td>
-                    <div className="table-actions">
-                      <button
-                        className="secondary-button table-button"
-                        type="button"
-                        onClick={() => onUseDocument(document)}
-                        disabled={document.document_id === activeDocumentId}
-                      >
-                        {document.document_id === activeDocumentId ? "Active" : "Use"}
-                      </button>
-                      <button
-                        className="danger-button table-button"
-                        type="button"
-                        onClick={() => handleDelete(document.document_id)}
-                        disabled={deletingId === document.document_id}
-                      >
-                        {deletingId === document.document_id ? "Deleting..." : "Delete"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              visibleDocuments.map((document) => {
+                const isSelected = selectedDocumentIds.includes(document.document_id);
+
+                return (
+                  <tr key={document.document_id} className={isSelected ? "selected-document-row" : ""}>
+                    <td>{document.number}</td>
+                    <td>{document.document_id}</td>
+                    <td>{document.file_name}</td>
+                    <td>{document.file_path}</td>
+                    <td>{document.status}</td>
+                    <td title={document.created_date}>{formatSavedTime(document.created_date)}</td>
+                    <td>
+                      <div className="table-actions">
+                        <button
+                          className={`secondary-button table-button ${isSelected ? "selected" : ""}`}
+                          type="button"
+                          onClick={() => onUseDocument(document)}
+                          aria-pressed={isSelected}
+                        >
+                          {isSelected ? "Selected" : "Use"}
+                        </button>
+                        <button
+                          className="secondary-button table-button"
+                          type="button"
+                          onClick={() => onViewMetadata(document)}
+                        >
+                          View Metadata
+                        </button>
+                        <button
+                          className="danger-button table-button"
+                          type="button"
+                          onClick={() => handleDelete(document.document_id)}
+                          disabled={deletingId === document.document_id}
+                        >
+                          {deletingId === document.document_id ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

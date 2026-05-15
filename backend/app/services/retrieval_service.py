@@ -1,4 +1,5 @@
 from elasticsearch import Elasticsearch
+from networkx import hits
 from app.core.config import ELASTICSEARCH_HOST
 from langchain_openai import OpenAIEmbeddings
 
@@ -56,10 +57,18 @@ def search_documents(
 
     hits = response["hits"]["hits"]
 
-    # Extract results
-    results = [
-        hit["_source"]["text"]
-        for hit in hits
-    ]
+    # Extract structured results
+
+    results = []
+
+    for hit in hits:
+        source = hit["_source"]
+
+        results.append({
+            "document_id": source.get("document_id"),
+            "document_name": source.get("document_name", "Unknown Document"),
+            "text": source.get("text", ""),
+            "score": hit.get("_score", 0)
+        })
 
     return results
