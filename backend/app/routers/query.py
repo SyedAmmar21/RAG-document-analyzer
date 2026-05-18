@@ -24,7 +24,7 @@ class QueryRequest(BaseModel):
     # NEW retrieval scope architecture
     scope_type: str = "global"
 
-    folder_ids: list[int] = []
+    folder_ids: list[str|int] = []
 
     document_ids: list[str] = []
 
@@ -49,6 +49,17 @@ async def query_agent(request: QueryRequest):
 
             # Handle synthetic unorganized folder
             if str(folder_id) == "unorganized":
+
+                from app.services.domain_service import get_unorganized_documents
+
+                documents = get_unorganized_documents()
+
+                for document in documents:
+                    document_id = document["document_id"]
+
+                    if document_id not in all_document_ids:
+                         all_document_ids.append(document_id)
+
                 continue
 
             try:
@@ -100,6 +111,8 @@ async def query_agent(request: QueryRequest):
         response=answer
     )
 
+    print("ANSWER TYPE:", type(answer))
+    print("ANSWER VALUE:", answer)
     # Return response
     return {
         "answer": answer
