@@ -107,3 +107,27 @@ def add_ai_response(document_id: str, query: str, response: str):
 
     conn.commit()
     conn.close()
+
+def get_document_by_id(document_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT id, file_path, created_date
+    FROM documents
+    WHERE id = ?
+    """, (document_id,))
+
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "document_id": row["id"],
+        "file_path": row["file_path"],
+        "file_name": os.path.basename(row["file_path"]),
+        "created_date": row["created_date"],
+    }

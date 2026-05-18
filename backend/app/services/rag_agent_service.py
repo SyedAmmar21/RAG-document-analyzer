@@ -30,19 +30,20 @@ def create_tools(llm, document_id=None, document_ids=None):
                 from the user's currently selected retrieval scope.
 
                 IMPORTANT:
-                - Treat the retrieved chunks as the authoritative representation
-                  of the selected documents/folders.
+                - Treat the retrieved chunks as the authoritative representation of the selected documents/folders.
                 - Do NOT say you lack access to the folders/documents.
                 - Do NOT ask the user to provide folder names again.
                 - Base your reasoning ONLY on the retrieved evidence below.
-                - Synthesize themes, patterns, comparisons, and insights confidently
-                  from the provided context.
+                - Synthesize themes, patterns, comparisons, and insights confidently from the provided context.
                 - When referencing information, naturally mention the source document name when relevant.
                 - If multiple documents contribute to a conclusion, mention the contributing documents.
                 - Use grounded attribution such as:
                       "According to [document name]..."
                       "The [document name] states..."
                       "Multiple retrieved documents suggest..."  
+                - When making factual claims or thematic conclusions, include inline citations using this format: [Source: document_name]
+                - If multiple documents support a point, use: [Sources: doc1, doc2]
+                - Only cite documents that appear in the retrieved context.      
 
                 RETRIEVAL MODE:
                 {"Multiple Documents" if document_ids else "Single Document" if document_id else "Global Search"}

@@ -1,7 +1,8 @@
 from elasticsearch import Elasticsearch
-from networkx import hits
 from app.core.config import ELASTICSEARCH_HOST
 from langchain_openai import OpenAIEmbeddings
+from app.services.document_service import get_document_by_id
+
 
 # Elasticsearch connection
 es = Elasticsearch(
@@ -64,9 +65,20 @@ def search_documents(
     for hit in hits:
         source = hit["_source"]
 
+        document_id = source.get("document_id")
+
+        # SQLite metadata lookup
+        document = get_document_by_id(document_id)
+
+        document_name = (
+            document["file_name"]
+            if document
+            else "Untitled Document"
+        )
+
         results.append({
-            "document_id": source.get("document_id"),
-            "document_name": source.get("document_name", "Unknown Document"),
+            "document_id": document_id,
+            "document_name": document_name,
             "text": source.get("text", ""),
             "score": hit.get("_score", 0)
         })
