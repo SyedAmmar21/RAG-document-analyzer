@@ -110,9 +110,7 @@ async def query_agent(request: QueryRequest):
         query=request.query,
         response=answer
     )
-
-    print("ANSWER TYPE:", type(answer))
-    print("ANSWER VALUE:", answer)
+    
     # Return response
     return {
         "answer": answer

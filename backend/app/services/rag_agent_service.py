@@ -1,3 +1,4 @@
+from email.mime import text
 from multiprocessing import context
 from unittest import result
 
@@ -18,20 +19,75 @@ def create_tools(llm, document_id=None, document_ids=None):
         Search relevant document chunks from Elasticsearch based on the user's query.
         Use this tool for general questions about the document.
         """
-        results = search_documents(query, document_id=document_id, document_ids=document_ids, top_k=4)
+        results = search_documents(query, document_id=document_id, document_ids=document_ids, top_k=8)
         if not results:
             return "No relevant information found."
 
-        context = ""
+        context = f"""
+                RETRIEVAL CONTEXT
+
+                You are receiving document chunks that were intentionally retrieved
+                from the user's currently selected retrieval scope.
+
+                IMPORTANT:
+                - Treat the retrieved chunks as the authoritative representation
+                  of the selected documents/folders.
+                - Do NOT say you lack access to the folders/documents.
+                - Do NOT ask the user to provide folder names again.
+                - Base your reasoning ONLY on the retrieved evidence below.
+                - Synthesize themes, patterns, comparisons, and insights confidently
+                  from the provided context.
+                - When referencing information, naturally mention the source document name when relevant.
+                - If multiple documents contribute to a conclusion, mention the contributing documents.
+                - Use grounded attribution such as:
+                      "According to [document name]..."
+                      "The [document name] states..."
+                      "Multiple retrieved documents suggest..."  
+
+                RETRIEVAL MODE:
+                {"Multiple Documents" if document_ids else "Single Document" if document_id else "Global Search"}
+
+                ====================
+                """
+
+        source_documents = set()
+
+        for result in results:
+           source_documents.add(result["document_name"])
+
+        sources_text = "\n".join(
+             f"- {doc}"
+             for doc in sorted(source_documents)
+        )
+
+        context += f"""
+
+            SOURCE DOCUMENTS INCLUDED:
+            {sources_text}
+
+            ====================
+
+           """
+
+        seen_chunks = set()
 
         for result in results:
             document_name = result["document_name"]
-            text = result["text"]
+            text = result["text"].strip()
+
+            # skip duplicate chunks
+            if text in seen_chunks:
+                continue
+
+            seen_chunks.add(text)
+
+            # truncate oversized chunks
+            cleaned_text = text[:2000]
 
             context += f"""
         DOCUMENT: {document_name}
 
-        {text}
+        {cleaned_text}
 
         --------------------
         """
