@@ -24,32 +24,51 @@ def create_tools(llm, document_id=None, document_ids=None):
             return "No relevant information found."
 
         context = f"""
-                RETRIEVAL CONTEXT
+            RETRIEVAL CONTEXT
 
-                You are receiving document chunks that were intentionally retrieved
-                from the user's currently selected retrieval scope.
+            The retrieved chunks below are the authoritative evidence
+            for the user's selected retrieval scope.
 
-                IMPORTANT:
-                - Treat the retrieved chunks as the authoritative representation of the selected documents/folders.
-                - Do NOT say you lack access to the folders/documents.
-                - Do NOT ask the user to provide folder names again.
-                - Base your reasoning ONLY on the retrieved evidence below.
-                - Synthesize themes, patterns, comparisons, and insights confidently from the provided context.
-                - When referencing information, naturally mention the source document name when relevant.
-                - If multiple documents contribute to a conclusion, mention the contributing documents.
-                - Use grounded attribution such as:
-                      "According to [document name]..."
-                      "The [document name] states..."
-                      "Multiple retrieved documents suggest..."  
-                - When making factual claims or thematic conclusions, include inline citations using this format: [Source: document_name]
-                - If multiple documents support a point, use: [Sources: doc1, doc2]
-                - Only cite documents that appear in the retrieved context.      
+            RULES:
+            - Base reasoning ONLY on retrieved evidence.
+            - Do NOT claim lack of access to documents/folders.
+            - Do NOT ask for folder names unless explicitly needed.
+            - Synthesize confidently across retrieved material.
+            - Avoid isolated per-document summaries.
 
-                RETRIEVAL MODE:
-                {"Multiple Documents" if document_ids else "Single Document" if document_id else "Global Search"}
+            ATTRIBUTION:
+            - Cite factual claims using:
+            [Source: document]
+            [Sources: doc1, doc2]
+            - Only cite retrieved documents.
+            - Mention source names naturally when useful.
+            - Consolidate citations when possible.
 
-                ====================
-                """
+            SYNTHESIS:
+            - Compare and synthesize documents actively.
+            - Identify:
+            * shared themes
+            * differing perspectives
+            * reinforcing evidence
+            * tensions/contradictions
+            * emerging patterns
+            * differing priorities/risk framing
+            * implications/consequences
+            * confidence/uncertainty signals
+
+            - Prefer analytical reasoning such as:
+            "The documents generally agree that..."
+            "However, they differ in..."
+            "A recurring pattern is..."
+            "One document emphasizes..., while another focuses on..."
+            "This may imply..."
+            "The evidence strongly suggests..."
+
+            RETRIEVAL MODE:
+            {"Multiple Documents" if document_ids else "Single Document" if document_id else "Global Search"}
+
+            ====================
+            """
 
         source_documents = set()
 
@@ -86,7 +105,7 @@ def create_tools(llm, document_id=None, document_ids=None):
             cleaned_text = text[:2000]
 
             context += f"""
-        DOCUMENT: {document_name}
+        [SOURCE: {document_name}]
 
         {cleaned_text}
 
