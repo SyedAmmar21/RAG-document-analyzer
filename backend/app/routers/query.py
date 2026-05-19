@@ -4,8 +4,11 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from app.services.rag_agent_service import get_rag_agent
 from app.services.document_service import add_ai_response
-
 from app.services.domain_service import get_documents_by_domain
+
+from app.services.news_ingestion_service import search_gold_news
+from app.services.news_ingestion_service import extract_article_text
+from app.services.news_ingestion_service import save_article_as_txt
 
 router = APIRouter()
 
@@ -163,4 +166,40 @@ Rules:
 
     return {
         "answer": answer
+    }
+
+@router.get("/test-news")
+def test_news():
+
+    results = search_gold_news()
+
+    return results
+
+@router.get("/test-extract")
+def test_extract():
+
+    url = "https://markets.businessinsider.com/news/stocks/iux-publishes-gold-market-insight-on-volatility-trends-and-user-engagement-in-2026-1036148744"
+
+    text = extract_article_text(url)
+
+    return {
+        "length": len(text) if text else 0,
+        "preview": text[:3000] if text else None
+    }
+
+@router.get("/test-save-news")
+def test_save_news():
+
+    url = "https://markets.businessinsider.com/news/stocks/iux-publishes-gold-market-insight-on-volatility-trends-and-user-engagement-in-2026-1036148744"
+
+    text = extract_article_text(url)
+
+    path = save_article_as_txt(
+        "gold_market_test",
+        text
+    )
+
+    return {
+        "saved_path": path,
+        "text_length": len(text)
     }
