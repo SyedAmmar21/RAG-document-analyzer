@@ -26,8 +26,7 @@ def create_tools(llm, document_id=None, document_ids=None):
         context = f"""
             RETRIEVAL CONTEXT
 
-            The retrieved chunks below are the authoritative evidence
-            for the user's selected retrieval scope.
+            The retrieved chunks below are the authoritative evidence for the user's selected retrieval scope.
 
             RULES:
             - Base reasoning ONLY on retrieved evidence.
@@ -47,22 +46,37 @@ def create_tools(llm, document_id=None, document_ids=None):
             SYNTHESIS:
             - Compare and synthesize documents actively.
             - Identify:
-            * shared themes
-            * differing perspectives
-            * reinforcing evidence
-            * tensions/contradictions
-            * emerging patterns
-            * differing priorities/risk framing
-            * implications/consequences
-            * confidence/uncertainty signals
+                * shared themes
+                * differing perspectives
+                * reinforcing evidence
+                * tensions/contradictions
+                * emerging patterns
+                * differing priorities/risk framing
+                * implications/consequences
+                * confidence/uncertainty signals
+
+            - Go beyond surface summarization when appropriate.
+            - Infer implications, strategic consequences, and broader patterns from the retrieved evidence.
+            - Distinguish between:
+                * direct evidence
+                * inferred implications
+                * uncertain/speculative conclusions   
+
+            - Distinguish between:
+                * strongly supported conclusions
+                * moderate inferences
+                * uncertain or speculative interpretations
+
+            - When evidence is limited, conflicting, or incomplete, state uncertainty explicitly instead of overstating conclusions.
+
 
             - Prefer analytical reasoning such as:
-            "The documents generally agree that..."
-            "However, they differ in..."
-            "A recurring pattern is..."
-            "One document emphasizes..., while another focuses on..."
-            "This may imply..."
-            "The evidence strongly suggests..."
+                "The documents generally agree that..."
+                "However, they differ in..."
+                "A recurring pattern is..."
+                "One document emphasizes..., while another focuses on..."
+                "This may imply..."
+                "The evidence strongly suggests..."
 
             RETRIEVAL MODE:
             {"Multiple Documents" if document_ids else "Single Document" if document_id else "Global Search"}
