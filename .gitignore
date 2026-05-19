@@ -220,6 +220,7 @@ __marimo__/
 
 # User uploaded files
 backend/storage/uploads/
+backend/strorage/news_articles/
 
 # VS Code
 .vscode/
