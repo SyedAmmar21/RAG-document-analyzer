@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { queryAgent } from "../services/api";
+import { ingestLatestGoldNews, queryAgent } from "../services/api";
 import MarkdownMessage from "./MarkdownMessage";
 
 export default function ChatWindow({
@@ -11,11 +11,15 @@ export default function ChatWindow({
   selectedDocumentIds = [],
   onToggleFolderSelection,
   onToggleDocumentSelection,
+  onNewsIngestComplete,
 }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isIngestingNews, setIsIngestingNews] = useState(false);
+  const [newsProgress, setNewsProgress] = useState([]);
+  const [newsSummary, setNewsSummary] = useState(null);
 
   const handleSend = async () => {
     const trimmedQuery = query.trim();
@@ -52,6 +56,58 @@ export default function ChatWindow({
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleIngestLatestNews = async () => {
+    setError("");
+    setNewsSummary(null);
+    setNewsProgress([
+      {
+        title: "Searching latest gold news",
+        status: "processing",
+        success: null,
+      },
+    ]);
+    setIsIngestingNews(true);
+
+    try {
+      const res = await ingestLatestGoldNews();
+      const processed = res.processed || [];
+      const failed = res.failed || [];
+      const skipped = res.skipped || [];
+
+      setNewsProgress([
+        ...processed.map((article) => ({
+          ...article,
+          status: "processed",
+          success: true,
+        })),
+        ...skipped.map((article) => ({
+          ...article,
+          status: "skipped",
+          success: true,
+        })),
+        ...failed.map((article) => ({
+          ...article,
+          status: "failed",
+          success: false,
+        })),
+      ]);
+      setNewsSummary(res);
+      onNewsIngestComplete?.(res);
+    } catch (error) {
+      setError(error.message || "Could not download the latest gold news.");
+      setNewsProgress([
+        {
+          title: "Latest gold news ingestion",
+          status: "failed",
+          success: false,
+          error: error.message || "Request failed.",
+        },
+      ]);
+    } finally {
+      setIsIngestingNews(false);
     }
   };
 
@@ -135,6 +191,41 @@ export default function ChatWindow({
 
       {error && <p className="error-text">{error}</p>}
 
+      <div className="news-ingestion-panel" aria-live="polite">
+        <button
+          className="secondary-button news-ingestion-button"
+          type="button"
+          onClick={handleIngestLatestNews}
+          disabled={isIngestingNews}
+        >
+          {isIngestingNews && <span className="spinner small-spinner" />}
+          {isIngestingNews ? "Downloading latest gold news..." : "Download Latest Gold News"}
+        </button>
+
+        {newsProgress.length > 0 && (
+          <div className="news-progress-list">
+            {newsProgress.slice(0, 10).map((item, index) => (
+              <div
+                className={`news-progress-item ${item.success === false ? "failed" : ""}`}
+                key={`${item.title}-${index}`}
+              >
+                <span className="news-progress-status">
+                  {item.success === false
+                    ? "Failed"
+                    : item.status === "processing"
+                      ? "Processing"
+                      : item.status === "skipped"
+                        ? "Skipped"
+                        : "Processed"}
+                </span>
+                <span className="news-progress-title">{item.title}</span>
+                {item.domain && <span className="news-progress-domain">{item.domain}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="composer">
         <textarea
           value={query}
@@ -166,6 +257,69 @@ export default function ChatWindow({
           </button>
         </div>
       </div>
+
+      {newsSummary && (
+        <div className="modal-overlay">
+          <div className="news-summary-modal" role="dialog" aria-modal="true" aria-labelledby="news-summary-title">
+            <div className="modal-header">
+              <div>
+                <p className="section-kicker">Autonomous ingestion</p>
+                <h2 id="news-summary-title">Gold News Download Complete</h2>
+              </div>
+              <button
+                className="close-button"
+                onClick={() => setNewsSummary(null)}
+                aria-label="Close news ingestion summary"
+                type="button"
+              >
+                x
+              </button>
+            </div>
+
+            <p className="news-summary-counts">
+              {newsSummary.total_processed || 0} processed, {newsSummary.total_skipped || 0} skipped, {newsSummary.total_failed || 0} failed
+            </p>
+
+            <div className="news-summary-list">
+              {(newsSummary.processed || []).map((article) => (
+                <div className="news-summary-row" key={article.document_id || article.url}>
+                  <div>
+                    <strong>{article.title}</strong>
+                    <span>{article.domain || "No domain assigned"}</span>
+                  </div>
+                  <span className="success-pill">Processed</span>
+                </div>
+              ))}
+
+              {(newsSummary.skipped || []).map((article, index) => (
+                <div className="news-summary-row skipped" key={`${article.url || article.title}-${index}`}>
+                  <div>
+                    <strong>{article.title}</strong>
+                    <span>{article.reason || "Duplicate article skipped."}</span>
+                  </div>
+                  <span className="skipped-pill">Skipped</span>
+                </div>
+              ))}
+
+              {(newsSummary.failed || []).map((article, index) => (
+                <div className="news-summary-row failed" key={`${article.url || article.title}-${index}`}>
+                  <div>
+                    <strong>{article.title}</strong>
+                    <span>{article.error || "Failed to process article."}</span>
+                  </div>
+                  <span className="failure-pill">Failed</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-actions">
+              <button className="primary-button" type="button" onClick={() => setNewsSummary(null)}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

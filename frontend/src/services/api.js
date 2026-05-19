@@ -74,6 +74,14 @@ export const getDocuments = async () => {
   return parseResponse(res);
 };
 
+export const ingestLatestGoldNews = async () => {
+  const res = await fetch(`${BASE_URL}/news/ingest-latest`, {
+    method: "POST",
+  });
+
+  return parseResponse(res);
+};
+
 export const deleteDocument = async (document_id) => {
   const res = await fetch(`${BASE_URL}/documents/${document_id}`, {
     method: "DELETE",

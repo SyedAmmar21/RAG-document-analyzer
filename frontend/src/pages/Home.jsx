@@ -41,6 +41,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("main");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
+  const [workspaceRefreshKey, setWorkspaceRefreshKey] = useState(0);
 
   // ── Retrieval Scope State (Phase 1: architecture only) ──
   const [scopeType, setScopeType] = useState("global");
@@ -143,6 +144,20 @@ export default function Home() {
     }
   };
 
+  const handleNewsIngestComplete = (result) => {
+    const processedIds = (result.processed || [])
+      .map((article) => article.document_id)
+      .filter(Boolean);
+
+    if (processedIds.length > 0) {
+      setDocumentId(processedIds[0]);
+      setSelectedDocumentIds(processedIds);
+      setScopeType("documents");
+    }
+
+    setWorkspaceRefreshKey((currentKey) => currentKey + 1);
+  };
+
   const handleMetadataSaved = () => {
     // Reset metadata review state after saving
     setMetadataSuggestions(null);
@@ -202,6 +217,7 @@ export default function Home() {
 
       <section className="semantic-workspace" aria-label="Gold analyst workspace" hidden={activeTab !== "main"}>
         <SidebarFolders
+          key={`folders-${workspaceRefreshKey}`}
           onSelectFolder={handleToggleScopedDocument}
           selectedFolderIds={selectedFolderIds}
           selectedDocumentIds={selectedDocumentIds}
@@ -212,6 +228,7 @@ export default function Home() {
           <ChatWindow
             documentId={documentId}
             onUploadClick={() => setIsUploadModalOpen(true)}
+            onNewsIngestComplete={handleNewsIngestComplete}
             scopeType={scopeType}
             scopeLabel={scopeLabel}
             
@@ -226,6 +243,7 @@ export default function Home() {
 
       <div hidden={activeTab !== "repo"}>
         <DocumentRepository
+          key={`repository-${workspaceRefreshKey}`}
           selectedDocumentIds={selectedDocumentIds}
           onUseDocument={handleToggleScopedDocument}
           onViewMetadata={handleViewDocumentMetadata}
