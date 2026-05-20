@@ -31,6 +31,16 @@ from app.services.domain_service import (
 logger = logging.getLogger(__name__)
 
 
+def _extract_source_url_from_text(extracted_text: str) -> str | None:
+    """Extract source URL from document text header."""
+    lines = extracted_text.split("\n")
+    for line in lines[:10]:  # Check first 10 lines
+        if line.startswith("Source URL:"):
+            url = line.replace("Source URL:", "", 1).strip()
+            return url if url else None
+    return None
+
+
 def _cleanup_failed_document(document_id: str):
     conn = get_connection()
     cursor = conn.cursor()
@@ -104,6 +114,21 @@ def process_document_pipeline(
             document_id,
             metadata_suggestions
         )
+
+        # Extract and save source URL if present
+        source_url = _extract_source_url_from_text(extracted_text)
+        if source_url:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO document_metadata (document_id, field, value)
+                VALUES (?, ?, ?)
+                """,
+                (document_id, "source_url", source_url)
+            )
+            conn.commit()
+            conn.close()
 
         # Vector indexing
         index_document(

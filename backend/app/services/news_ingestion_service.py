@@ -28,10 +28,10 @@ TRACKING_QUERY_KEYS = {
 }
 GOLD_NEWS_QUERY = (
     "gold prices today latest news "
-    "Federal Reserve inflation real yields "
+    "Federal Reserve inflation real yields gold"
     "central bank gold buying "
     "gold ETF inflows "
-    "safe haven geopolitical tensions "
+    "gold safe haven geopolitical tensions "
     "gold mining supply disruption"
 )
 
