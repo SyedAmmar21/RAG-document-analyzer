@@ -1,13 +1,16 @@
 import os
+import mimetypes
 from sqlite3 import IntegrityError
 from typing import Any, Dict, Optional
 
 from elasticsearch import Elasticsearch
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.core.config import ELASTICSEARCH_HOST
 from app.db.database import get_connection
+from app.services.document_service import get_document_by_id
 from app.services.domain_service import (
     assign_document_to_domain,
     create_domain,
@@ -148,6 +151,31 @@ async def delete_document(document_id: str):
     )
 
     return {"message": "Document deleted successfully"}
+
+
+@router.get("/documents/{document_id}/view")
+async def view_document(document_id: str):
+    document = get_document_by_id(document_id)
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    file_path = document["file_path"]
+
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Document file not found")
+
+    media_type, _ = mimetypes.guess_type(file_path)
+
+    safe_file_name = document["file_name"].replace('"', "")
+
+    return FileResponse(
+        file_path,
+        media_type=media_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'inline; filename="{safe_file_name}"',
+        },
+    )
 
 
 @router.get("/documents/{document_id}/metadata")

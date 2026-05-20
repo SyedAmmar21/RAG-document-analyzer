@@ -862,7 +862,16 @@ h2 {
 .table-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
+}
+
+.repository-action-button {
+  min-height: 32px;
+  border-radius: 7px;
+  padding: 0 9px;
+  font-size: 0.78rem;
+  line-height: 1;
 }
 
 .field-search-grid {

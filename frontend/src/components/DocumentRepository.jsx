@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { deleteDocument, getDocuments } from "../services/api";
+import { deleteDocument, getDocumentViewUrl, getDocuments } from "../services/api";
 
 function formatSavedTime(value) {
   if (!value) return "-";
@@ -78,6 +78,10 @@ export default function DocumentRepository({
     } finally {
       setDeletingId("");
     }
+  };
+
+  const handleViewDocument = (documentId) => {
+    window.open(getDocumentViewUrl(documentId), "_blank", "noopener,noreferrer");
   };
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
@@ -168,25 +172,36 @@ export default function DocumentRepository({
                     <td>
                       <div className="table-actions">
                         <button
-                          className={`secondary-button table-button ${isSelected ? "selected" : ""}`}
+                          className={`secondary-button table-button repository-action-button ${isSelected ? "selected" : ""}`}
                           type="button"
                           onClick={() => onUseDocument(document)}
                           aria-pressed={isSelected}
+                          title={isSelected ? "Document is selected" : "Use document"}
                         >
                           {isSelected ? "Selected" : "Use"}
                         </button>
                         <button
-                          className="secondary-button table-button"
+                          className="secondary-button table-button repository-action-button"
                           type="button"
-                          onClick={() => onViewMetadata(document)}
+                          onClick={() => handleViewDocument(document.document_id)}
+                          title="View document"
                         >
-                          View Metadata
+                          View
                         </button>
                         <button
-                          className="danger-button table-button"
+                          className="secondary-button table-button repository-action-button"
+                          type="button"
+                          onClick={() => onViewMetadata(document)}
+                          title="View metadata"
+                        >
+                          Meta
+                        </button>
+                        <button
+                          className="danger-button table-button repository-action-button"
                           type="button"
                           onClick={() => handleDelete(document.document_id)}
                           disabled={deletingId === document.document_id}
+                          title="Delete document"
                         >
                           {deletingId === document.document_id ? "Deleting..." : "Delete"}
                         </button>

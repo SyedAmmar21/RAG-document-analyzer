@@ -74,6 +74,10 @@ export const getDocuments = async () => {
   return parseResponse(res);
 };
 
+export const getDocumentViewUrl = (document_id) => (
+  `${BASE_URL}/documents/${encodeURIComponent(document_id)}/view`
+);
+
 export const ingestLatestGoldNews = async () => {
   const res = await fetch(`${BASE_URL}/news/ingest-latest`, {
     method: "POST",
