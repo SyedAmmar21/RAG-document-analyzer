@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { uploadFile } from "../services/api";
-import DuplicateAlert from "./DuplicateAlert";
 
 export default function FileUpload({
   setDocumentId,
@@ -14,8 +13,6 @@ export default function FileUpload({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [showDuplicateAlert, setShowDuplicateAlert] = useState(false);
-  const [duplicateInfo, setDuplicateInfo] = useState({});
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
@@ -42,18 +39,7 @@ export default function FileUpload({
 
     try {
       const res = await uploadFile(file);
-      
-      if (res.is_duplicate) {
-        // Show duplicate alert instead of regular success message
-        setDuplicateInfo({
-          fileName: res.file_name || file.name,
-          documentNumber: res.document_number,
-        });
-        setShowDuplicateAlert(true);
-      } else {
-        setMessage(res.message || "Document uploaded successfully.");
-      }
-      
+      setMessage(res.message || "Document uploaded successfully.");
       setDocumentId(res.document_id);
       setDocumentName(res.file_name || file.name);
       setMetadataSuggestions(res.metadata_suggestions ? { ...res.metadata_suggestions, saved: Boolean(res.is_duplicate) } : null);
@@ -99,13 +85,6 @@ export default function FileUpload({
       )}
       {message && <p className="success-text">{message}</p>}
       {error && <p className="error-text">{error}</p>}
-      
-      <DuplicateAlert
-        isOpen={showDuplicateAlert}
-        onClose={() => setShowDuplicateAlert(false)}
-        fileName={duplicateInfo.fileName}
-        documentNumber={duplicateInfo.documentNumber}
-      />
     </section>
   );
 }

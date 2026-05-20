@@ -19,6 +19,20 @@ function formatSavedTime(value) {
   }).format(date);
 }
 
+function formatPublishedDate(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  }).format(date);
+}
+
 export default function DocumentRepository({
   selectedDocumentIds = [],
   onUseDocument,
@@ -73,6 +87,7 @@ export default function DocumentRepository({
       String(document.number),
       document.document_id,
       document.file_name,
+      document.published_date,
       document.file_path,
       document.status,
       document.created_date,
@@ -121,6 +136,7 @@ export default function DocumentRepository({
               <th>Number</th>
               <th>Document ID</th>
               <th>File Name</th>
+              <th>Published Date</th>
               <th>File Path</th>
               <th>Status</th>
               <th>Date</th>
@@ -130,11 +146,11 @@ export default function DocumentRepository({
           <tbody>
             {documents.length === 0 ? (
               <tr>
-                <td colSpan="7">{isLoading ? "Loading documents..." : "No uploaded documents found."}</td>
+                <td colSpan="8">{isLoading ? "Loading documents..." : "No uploaded documents found."}</td>
               </tr>
             ) : visibleDocuments.length === 0 ? (
               <tr>
-                <td colSpan="7">No documents match your search.</td>
+                <td colSpan="8">No documents match your search.</td>
               </tr>
             ) : (
               visibleDocuments.map((document) => {
@@ -145,6 +161,7 @@ export default function DocumentRepository({
                     <td>{document.number}</td>
                     <td>{document.document_id}</td>
                     <td>{document.file_name}</td>
+                    <td title={document.published_date || ""}>{formatPublishedDate(document.published_date)}</td>
                     <td>{document.file_path}</td>
                     <td>{document.status}</td>
                     <td title={document.created_date}>{formatSavedTime(document.created_date)}</td>

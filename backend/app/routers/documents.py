@@ -57,6 +57,28 @@ async def get_documents():
     ORDER BY created_date DESC
     """)
     rows = cursor.fetchall()
+
+    document_ids = [row["id"] for row in rows]
+    published_dates = {}
+
+    if document_ids:
+        placeholders = ",".join("?" for _ in document_ids)
+        cursor.execute(
+            f"""
+            SELECT document_id, value
+            FROM document_metadata
+            WHERE field = 'published_date'
+              AND document_id IN ({placeholders})
+            """,
+            document_ids,
+        )
+
+        published_dates = {
+            row["document_id"]: row["value"]
+            for row in cursor.fetchall()
+            if row["value"]
+        }
+
     conn.close()
 
     documents = [
@@ -64,6 +86,7 @@ async def get_documents():
             "number": row["number"],
             "document_id": row["id"],
             "file_name": os.path.basename(row["file_path"]),
+            "published_date": published_dates.get(row["id"]),
             "file_path": row["file_path"],
             "status": "ready",
             "created_date": row["created_date"],

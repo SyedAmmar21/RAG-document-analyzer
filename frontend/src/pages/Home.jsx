@@ -4,6 +4,7 @@ import DocumentRepository from "../components/DocumentRepository";
 import SidebarFolders from "../components/SidebarFolders";
 import UploadModal from "../components/UploadModal";
 import MetadataModal from "../components/MetadataModal";
+import DuplicateAlert from "../components/DuplicateAlert";
 import { getDocumentMetadata } from "../services/api";
 
 function rowsToMetadataSuggestions(rows) {
@@ -41,6 +42,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("main");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
+  const [duplicateDocument, setDuplicateDocument] = useState(null);
   const [workspaceRefreshKey, setWorkspaceRefreshKey] = useState(0);
 
   // ── Retrieval Scope State (Phase 1: architecture only) ──
@@ -137,9 +139,18 @@ export default function Home() {
     setSelectedDocumentIds([uploadData.document_id]);
     setScopeType("documents");
     setIsUploadModalOpen(false);
+
+    if (uploadData.is_duplicate) {
+      setIsMetadataModalOpen(false);
+      setDuplicateDocument({
+        fileName: uploadData.file_name,
+        documentNumber: uploadData.document_number,
+      });
+      return;
+    }
     
     // Show metadata modal if metadata was extracted
-    if (uploadData.metadata_suggestions && !uploadData.is_duplicate) {
+    if (uploadData.metadata_suggestions) {
       setIsMetadataModalOpen(true);
     }
   };
@@ -264,6 +275,13 @@ export default function Home() {
         metadataSuggestions={metadataSuggestions}
         domainSuggestion={domainSuggestion}
         onMetadataSaved={handleMetadataSaved}
+      />
+
+      <DuplicateAlert
+        isOpen={Boolean(duplicateDocument)}
+        onClose={() => setDuplicateDocument(null)}
+        fileName={duplicateDocument?.fileName}
+        documentNumber={duplicateDocument?.documentNumber}
       />
     </main>
   );
