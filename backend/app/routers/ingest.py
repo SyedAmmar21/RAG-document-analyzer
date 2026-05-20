@@ -20,12 +20,13 @@ logger = logging.getLogger(__name__)
 
 @router.post("/ingest")
 async def ingest_file(file: UploadFile = File(...)):
-    # Validate
+    """Handle file upload, validation, and document ingestion."""
+    # Validate file
     validate_file_type(file)
     validate_file_size(file)
 
+    # Check for duplicates
     existing_document = find_document_by_upload_name(file.filename)
-
     if existing_document:
         return {
             "message": f"This file is already in the repository at document number {existing_document['number']}. Reusing the existing document.",
@@ -33,13 +34,13 @@ async def ingest_file(file: UploadFile = File(...)):
             "file_name": existing_document["file_name"],
             "file_path": existing_document["file_path"],
             "document_number": existing_document["number"],
-            "duplicate": True,
+            "is_duplicate": True,
             "metadata_suggestions": get_metadata_values(existing_document["document_id"]),
-            "domain_suggestion": get_document_domain(existing_document["document_id"])
+            "domain_suggestion": get_document_domain(existing_document["document_id"]),
         }
 
+    # Save and ingest new file
     file_path = save_file(file)
-
     try:
         pipeline_result = process_document_pipeline(
             file_path=file_path,
@@ -60,6 +61,5 @@ async def ingest_file(file: UploadFile = File(...)):
             pipeline_result["assigned_domain"]
             or pipeline_result["domain_suggestion"]
         ),
-        "duplicate": False,
         "is_duplicate": False,
     }

@@ -2,6 +2,19 @@ import { useState } from "react";
 import { ingestLatestGoldNews, queryAgent } from "../services/api";
 import MarkdownMessage from "./MarkdownMessage";
 
+// Helper component for news modal list items
+function NewsModalListItems({ articles, className, pillLabel, pillClass, detailField }) {
+  return articles.map((article, index) => (
+    <div className={`news-summary-row ${className}`} key={article.document_id || `${article.url || article.title}-${index}`}>
+      <div>
+        <strong>{article.title}</strong>
+        <span>{article[detailField] || (detailField === "reason" ? "Duplicate article skipped." : "No domain assigned")}</span>
+      </div>
+      <span className={pillClass}>{pillLabel}</span>
+    </div>
+  ));
+}
+
 export default function ChatWindow({
   documentId,
   onUploadClick,
@@ -281,35 +294,27 @@ export default function ChatWindow({
             </p>
 
             <div className="news-summary-list">
-              {(newsSummary.processed || []).map((article) => (
-                <div className="news-summary-row" key={article.document_id || article.url}>
-                  <div>
-                    <strong>{article.title}</strong>
-                    <span>{article.domain || "No domain assigned"}</span>
-                  </div>
-                  <span className="success-pill">Processed</span>
-                </div>
-              ))}
-
-              {(newsSummary.skipped || []).map((article, index) => (
-                <div className="news-summary-row skipped" key={`${article.url || article.title}-${index}`}>
-                  <div>
-                    <strong>{article.title}</strong>
-                    <span>{article.reason || "Duplicate article skipped."}</span>
-                  </div>
-                  <span className="skipped-pill">Skipped</span>
-                </div>
-              ))}
-
-              {(newsSummary.failed || []).map((article, index) => (
-                <div className="news-summary-row failed" key={`${article.url || article.title}-${index}`}>
-                  <div>
-                    <strong>{article.title}</strong>
-                    <span>{article.error || "Failed to process article."}</span>
-                  </div>
-                  <span className="failure-pill">Failed</span>
-                </div>
-              ))}
+              <NewsModalListItems
+                articles={newsSummary.processed || []}
+                className=""
+                pillLabel="Processed"
+                pillClass="success-pill"
+                detailField="domain"
+              />
+              <NewsModalListItems
+                articles={newsSummary.skipped || []}
+                className="skipped"
+                pillLabel="Skipped"
+                pillClass="skipped-pill"
+                detailField="reason"
+              />
+              <NewsModalListItems
+                articles={newsSummary.failed || []}
+                className="failed"
+                pillLabel="Failed"
+                pillClass="failure-pill"
+                detailField="error"
+              />
             </div>
 
             <div className="modal-actions">

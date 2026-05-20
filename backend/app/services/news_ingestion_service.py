@@ -42,6 +42,10 @@ def search_gold_news(max_results: int = MAX_NEWS_ARTICLES) -> Dict[str, Any]:
             query=(
                 "latest gold market news gold price Federal Reserve "
                 "inflation central banks geopolitics"
+                "central bank gold buying latest news"
+                "gold mining supply disruption latest news"
+                "gold market outlook analysis latest"
+
             ),
             topic="news",
             max_results=max_results,
@@ -54,7 +58,11 @@ def search_gold_news(max_results: int = MAX_NEWS_ARTICLES) -> Dict[str, Any]:
         }
 
 
-def extract_article_text(url: str) -> Optional[str]:
+def _is_valid_article_text(text: Optional[str]) -> bool:
+    return bool(text and len(text.strip()) >= MIN_ARTICLE_CHARACTERS)
+
+
+def _extract_with_trafilatura(url: str) -> Optional[str]:
     try:
         downloaded = trafilatura.fetch_url(url)
 
@@ -67,13 +75,46 @@ def extract_article_text(url: str) -> Optional[str]:
             include_tables=False,
         )
 
-        if not extracted_text or len(extracted_text.strip()) < MIN_ARTICLE_CHARACTERS:
+        if not _is_valid_article_text(extracted_text):
             return None
 
         return extracted_text.strip()
     except Exception:
-        logger.exception("Article extraction failed for %s", url)
+        logger.exception("Trafilatura extraction failed for %s", url)
         return None
+
+
+def _extract_with_tavily(url: str) -> Optional[str]:
+    try:
+        client = _get_tavily_client()
+        response = client.extract(
+            urls=url,
+            extract_depth="advanced",
+            format="text",
+        )
+
+        for result in response.get("results", []):
+            raw_content = result.get("raw_content")
+            if _is_valid_article_text(raw_content):
+                return raw_content.strip()
+
+        if response.get("failed_results"):
+            logger.info("Tavily extract failed for %s: %s", url, response["failed_results"])
+
+        return None
+    except Exception:
+        logger.exception("Tavily extraction failed for %s", url)
+        return None
+
+
+def extract_article_text(url: str) -> Optional[str]:
+    extracted_text = _extract_with_trafilatura(url)
+
+    if extracted_text:
+        return extracted_text
+
+    logger.info("Falling back to Tavily Extract for %s", url)
+    return _extract_with_tavily(url)
 
 
 def _canonicalize_url(url: Optional[str]) -> Optional[str]:
@@ -196,111 +237,130 @@ def _domain_name_from_pipeline_result(pipeline_result: Dict[str, Any]) -> Option
     return None
 
 
-def _failure_result(
+def _article_result(
     title: str,
     url: Optional[str],
-    reason: str,
+    status: str,
+    success: bool,
+    error: Optional[str] = None,
+    reason: Optional[str] = None,
+    **extra,
 ) -> Dict[str, Any]:
-    return {
+    """Create a standardized article result dict."""
+    result = {
         "title": title or "Untitled",
         "url": url,
-        "status": "failed",
-        "success": False,
-        "error": reason,
+        "status": status,
+        "success": success,
     }
+    if error:
+        result["error"] = error
+    if reason:
+        result["reason"] = reason
+    result.update(extra)
+    return result
 
 
-def _skipped_result(
-    title: str,
-    url: Optional[str],
-    reason: str,
+def _should_skip_duplicate(url: Optional[str], title: str, seen_urls: set, seen_titles: set) -> Optional[str]:
+    """Check if article is duplicate. Returns skip reason or None."""
+    if not url:
+        return "Missing article URL."
+    
+    canonical_url = _canonicalize_url(url)
+    if canonical_url and canonical_url in seen_urls:
+        return "Duplicate article URL already processed."
+    
+    normalized_title = re.sub(r"\s+", " ", title).strip().casefold()
+    if normalized_title and normalized_title in seen_titles:
+        return "Duplicate article title in Tavily results."
+    
+    return None
+
+
+def _track_article(url: Optional[str], title: str, seen_urls: set, seen_titles: set) -> None:
+    """Add article to tracking sets."""
+    canonical_url = _canonicalize_url(url)
+    if canonical_url:
+        seen_urls.add(canonical_url)
+    
+    normalized_title = re.sub(r"\s+", " ", title).strip().casefold()
+    if normalized_title:
+        seen_titles.add(normalized_title)
+
+
+def _build_ingestion_summary(
+    processed: List[Dict[str, Any]],
+    failed: List[Dict[str, Any]],
+    skipped: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
+    """Build standardized ingestion summary response."""
     return {
-        "title": title or "Untitled",
-        "url": url,
-        "status": "skipped",
-        "success": True,
-        "reason": reason,
+        "processed": processed,
+        "failed": failed,
+        "skipped": skipped,
+        "total_processed": len(processed),
+        "total_failed": len(failed),
+        "total_skipped": len(skipped),
     }
 
 
 def ingest_latest_gold_news(max_results: int = MAX_NEWS_ARTICLES) -> Dict[str, Any]:
+    """Ingest latest gold news articles and process through document pipeline."""
     response = search_gold_news(max_results=max_results)
     processed: List[Dict[str, Any]] = []
     failed: List[Dict[str, Any]] = []
     skipped: List[Dict[str, Any]] = []
     seen_urls = _get_existing_news_urls()
-    seen_titles = set()
+    seen_titles: set[str] = set()
 
     if response.get("error"):
         failed.append(
-            _failure_result(
+            _article_result(
                 title="Tavily search",
                 url=None,
-                reason=response["error"],
+                status="failed",
+                success=False,
+                error=response["error"],
             )
         )
-        return {
-            "processed": processed,
-            "failed": failed,
-            "skipped": skipped,
-            "total_processed": 0,
-            "total_failed": len(failed),
-            "total_skipped": 0,
-        }
+        return _build_ingestion_summary(processed, failed, skipped)
 
     results = response.get("results") or []
 
     for article in results[:max_results]:
         title = article.get("title") or "Untitled"
         url = article.get("url")
-        canonical_url = _canonicalize_url(url)
-        normalized_title = re.sub(r"\s+", " ", title).strip().casefold()
         published_date = (
             article.get("published_date")
             or article.get("publishedDate")
             or article.get("date")
         )
 
-        if not url:
-            failed.append(_failure_result(title, url, "Missing article URL."))
-            continue
-
-        if canonical_url and canonical_url in seen_urls:
+        skip_reason = _should_skip_duplicate(url, title, seen_urls, seen_titles)
+        if skip_reason:
             skipped.append(
-                _skipped_result(
-                    title,
-                    url,
-                    "Duplicate article URL already processed.",
+                _article_result(
+                    title=title,
+                    url=url,
+                    status="skipped",
+                    success=True,
+                    reason=skip_reason,
                 )
             )
             continue
 
-        if normalized_title and normalized_title in seen_titles:
-            skipped.append(
-                _skipped_result(
-                    title,
-                    url,
-                    "Duplicate article title in Tavily results.",
-                )
-            )
-            continue
-
-        if canonical_url:
-            seen_urls.add(canonical_url)
-        if normalized_title:
-            seen_titles.add(normalized_title)
-
+        _track_article(url, title, seen_urls, seen_titles)
         logger.info("Processing gold news article: %s", title)
 
         extracted_text = extract_article_text(url)
-
         if not extracted_text:
             failed.append(
-                _failure_result(
-                    title,
-                    url,
-                    "Could not extract enough article text.",
+                _article_result(
+                    title=title,
+                    url=url,
+                    status="failed",
+                    success=False,
+                    error="Could not extract enough article text.",
                 )
             )
             continue
@@ -318,30 +378,33 @@ def ingest_latest_gold_news(max_results: int = MAX_NEWS_ARTICLES) -> Dict[str, A
                 original_filename=os.path.basename(file_path),
             )
 
-            processed.append({
-                "title": title,
-                "url": url,
-                "status": "processed",
-                "success": True,
-                "document_id": pipeline_result["document_id"],
-                "file_name": pipeline_result["file_name"],
-                "file_path": file_path,
-                "domain": _domain_name_from_pipeline_result(pipeline_result),
-                "domain_details": (
-                    pipeline_result.get("assigned_domain")
-                    or pipeline_result.get("domain_suggestion")
-                ),
-                "metadata": pipeline_result.get("metadata_suggestions"),
-            })
+            processed.append(
+                _article_result(
+                    title=title,
+                    url=url,
+                    status="processed",
+                    success=True,
+                    document_id=pipeline_result["document_id"],
+                    file_name=pipeline_result["file_name"],
+                    file_path=file_path,
+                    domain=_domain_name_from_pipeline_result(pipeline_result),
+                    domain_details=(
+                        pipeline_result.get("assigned_domain")
+                        or pipeline_result.get("domain_suggestion")
+                    ),
+                    metadata=pipeline_result.get("metadata_suggestions"),
+                )
+            )
         except Exception as error:
             logger.exception("Gold news ingestion failed for %s", title)
-            failed.append(_failure_result(title, url, str(error)))
+            failed.append(
+                _article_result(
+                    title=title,
+                    url=url,
+                    status="failed",
+                    success=False,
+                    error=str(error),
+                )
+            )
 
-    return {
-        "processed": processed,
-        "failed": failed,
-        "skipped": skipped,
-        "total_processed": len(processed),
-        "total_failed": len(failed),
-        "total_skipped": len(skipped),
-    }
+    return _build_ingestion_summary(processed, failed, skipped)
