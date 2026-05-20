@@ -5,6 +5,7 @@ from app.routers.ingest import router as ingest_router
 from app.routers.news import router as news_router
 from app.routers.query import router as query_router
 from app.db.database import init_db
+from app.services.scheduler_service import start_scheduler, stop_scheduler
 
 
 app = FastAPI()
@@ -22,3 +23,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Start scheduler when FastAPI starts."""
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stop scheduler when FastAPI shuts down."""
+    stop_scheduler()
