@@ -70,24 +70,44 @@ async def get_documents():
 
     document_ids = [row["id"] for row in rows]
     published_dates = {}
+    source_urls = {}
+    document_domains = {}
 
     if document_ids:
         placeholders = ",".join("?" for _ in document_ids)
+        
+        # Fetch published dates and source URLs from metadata
         cursor.execute(
             f"""
-            SELECT document_id, value
+            SELECT document_id, field, value
             FROM document_metadata
-            WHERE field = 'published_date'
+            WHERE field IN ('published_date', 'source_url')
               AND document_id IN ({placeholders})
             """,
             document_ids,
         )
 
-        published_dates = {
-            row["document_id"]: row["value"]
-            for row in cursor.fetchall()
-            if row["value"]
-        }
+        for row in cursor.fetchall():
+            if row["field"] == "published_date" and row["value"]:
+                published_dates[row["document_id"]] = row["value"]
+            elif row["field"] == "source_url" and row["value"]:
+                source_urls[row["document_id"]] = row["value"]
+
+        # Fetch domains for each document
+        cursor.execute(
+            f"""
+            SELECT dd.document_id, d.name
+            FROM document_domains dd
+            JOIN domains d ON dd.domain_id = d.id
+            WHERE dd.document_id IN ({placeholders})
+            """,
+            document_ids,
+        )
+
+        for row in cursor.fetchall():
+            if row["document_id"] not in document_domains:
+                document_domains[row["document_id"]] = []
+            document_domains[row["document_id"]].append(row["name"])
 
     conn.close()
 
@@ -97,9 +117,10 @@ async def get_documents():
             "document_id": row["id"],
             "file_name": os.path.basename(row["file_path"]),
             "published_date": published_dates.get(row["id"]),
-            "file_path": row["file_path"],
             "status": "ready",
             "created_date": row["created_date"],
+            "domains": document_domains.get(row["id"], []),
+            "source_url": source_urls.get(row["id"]),
         }
         for row in rows
     ]

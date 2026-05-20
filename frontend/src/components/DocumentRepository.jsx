@@ -92,9 +92,10 @@ export default function DocumentRepository({
       document.document_id,
       document.file_name,
       document.published_date,
-      document.file_path,
       document.status,
       document.created_date,
+      document.source_url,
+      ...(document.domains || []),
     ]
       .filter(Boolean)
       .some((value) => value.toLowerCase().includes(normalizedSearchQuery));
@@ -120,7 +121,7 @@ export default function DocumentRepository({
           type="search"
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search by name, ID, path, status, or date"
+          placeholder="Search by name, ID, domain, status, source, or date"
           aria-label="Search repository documents"
         />
         <button
@@ -141,20 +142,21 @@ export default function DocumentRepository({
               <th>Document ID</th>
               <th>File Name</th>
               <th>Published Date</th>
-              <th>File Path</th>
               <th>Status</th>
               <th>Date</th>
+              <th>Domains</th>
+              <th>Source URL</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {documents.length === 0 ? (
               <tr>
-                <td colSpan="8">{isLoading ? "Loading documents..." : "No uploaded documents found."}</td>
+                <td colSpan="9">{isLoading ? "Loading documents..." : "No uploaded documents found."}</td>
               </tr>
             ) : visibleDocuments.length === 0 ? (
               <tr>
-                <td colSpan="8">No documents match your search.</td>
+                <td colSpan="9">No documents match your search.</td>
               </tr>
             ) : (
               visibleDocuments.map((document) => {
@@ -166,9 +168,10 @@ export default function DocumentRepository({
                     <td>{document.document_id}</td>
                     <td>{document.file_name}</td>
                     <td title={document.published_date || ""}>{formatPublishedDate(document.published_date)}</td>
-                    <td>{document.file_path}</td>
                     <td>{document.status}</td>
                     <td title={document.created_date}>{formatSavedTime(document.created_date)}</td>
+                    <td>{document.domains && document.domains.length > 0 ? document.domains.join(", ") : "-"}</td>
+                    <td>{document.source_url ? <a href={document.source_url} target="_blank" rel="noopener noreferrer" title={document.source_url}>Link</a> : "-"}</td>
                     <td>
                       <div className="table-actions">
                         <button
