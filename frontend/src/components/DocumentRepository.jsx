@@ -85,10 +85,15 @@ export default function DocumentRepository({
   };
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const visibleDocuments = documents.filter((document) => {
+  const numberedDocuments = documents.map((document, index) => ({
+    ...document,
+    display_number: documents.length - index,
+  }));
+
+  const visibleDocuments = numberedDocuments.filter((document) => {
     if (!normalizedSearchQuery) return true;
     return [
-      String(document.number),
+      String(document.display_number),
       document.document_id,
       document.file_name,
       document.published_date,
@@ -164,7 +169,7 @@ export default function DocumentRepository({
 
                 return (
                   <tr key={document.document_id} className={isSelected ? "selected-document-row" : ""}>
-                    <td>{document.number}</td>
+                    <td>{document.display_number}</td>
                     <td>{document.document_id}</td>
                     <td>{document.file_name}</td>
                     <td title={document.published_date || ""}>{formatPublishedDate(document.published_date)}</td>
