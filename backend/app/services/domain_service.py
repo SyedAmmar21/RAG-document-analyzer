@@ -104,6 +104,71 @@ def create_domain(name: str, description: Optional[str] = None):
     return get_domain_by_id(domain_id)
 
 
+def update_domain(domain_id: int, name: str, description: Optional[str] = None):
+    clean_name = name.strip()
+    clean_description = description.strip() if description else None
+
+    if not clean_name:
+        raise ValueError("Domain name is required.")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE domains
+            SET name = ?, description = ?
+            WHERE id = ?
+            """,
+            (clean_name, clean_description, domain_id)
+        )
+
+        if cursor.rowcount == 0:
+            conn.close()
+            return None
+
+        conn.commit()
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
+
+    recompute_domain_centroid(domain_id)
+
+    return get_domain_by_id(domain_id)
+
+
+def delete_domain(domain_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id FROM domains WHERE id = ?",
+        (domain_id,)
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return None
+
+    cursor.execute(
+        "DELETE FROM document_domains WHERE domain_id = ?",
+        (domain_id,)
+    )
+    cursor.execute(
+        "DELETE FROM domains WHERE id = ?",
+        (domain_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return True
+
+
 def get_domain_by_id(domain_id: int):
     conn = get_connection()
     cursor = conn.cursor()

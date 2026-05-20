@@ -14,10 +14,12 @@ from app.services.document_service import get_document_by_id
 from app.services.domain_service import (
     assign_document_to_domain,
     create_domain,
+    delete_domain,
     get_all_domains,
     get_document_domain,
     get_domain_by_id,
     get_unorganized_documents,
+    update_domain,
 )
 from app.services.metadata_service import get_metadata as get_saved_metadata, save_metadata
 from app.services.domain_service import get_documents_by_domain
@@ -45,6 +47,11 @@ class DocumentMetadataUpdateRequest(BaseModel):
 
 
 class DomainCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class DomainUpdateRequest(BaseModel):
     name: str
     description: Optional[str] = None
 
@@ -275,4 +282,34 @@ async def create_new_domain(request: DomainCreateRequest):
     return {
         "message": "Domain created",
         "domain": domain,
+    }
+
+
+@router.put("/domains/{domain_id}")
+async def update_existing_domain(domain_id: int, request: DomainUpdateRequest):
+    try:
+        domain = update_domain(domain_id, request.name, request.description)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail="Domain already exists")
+
+    if not domain:
+        raise HTTPException(status_code=404, detail="Domain not found")
+
+    return {
+        "message": "Domain updated",
+        "domain": domain,
+    }
+
+
+@router.delete("/domains/{domain_id}")
+async def delete_existing_domain(domain_id: int):
+    deleted = delete_domain(domain_id)
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Domain not found")
+
+    return {
+        "message": "Domain deleted. Documents were moved to Unorganized Files.",
     }

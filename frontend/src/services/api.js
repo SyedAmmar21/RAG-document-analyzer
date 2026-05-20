@@ -138,6 +138,29 @@ export const createDomain = async ({ name, description }) => {
   return parseResponse(res);
 };
 
+export const updateDomain = async (domainId, { name, description }) => {
+  const res = await fetch(`${BASE_URL}/domains/${encodeURIComponent(domainId)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name,
+      description,
+    }),
+  });
+
+  return parseResponse(res);
+};
+
+export const deleteDomain = async (domainId) => {
+  const res = await fetch(`${BASE_URL}/domains/${encodeURIComponent(domainId)}`, {
+    method: "DELETE",
+  });
+
+  return parseResponse(res);
+};
+
 export async function getFolderDocuments(domainId) {
   const response = await fetch(
     `${BASE_URL}/domains/${domainId}/documents`

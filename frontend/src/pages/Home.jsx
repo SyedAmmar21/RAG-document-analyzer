@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ChatWindow from "../components/ChatWindow";
 import DocumentRepository from "../components/DocumentRepository";
+import FoldersView from "../components/FoldersView";
 import SidebarFolders from "../components/SidebarFolders";
 import UploadModal from "../components/UploadModal";
 import MetadataModal from "../components/MetadataModal";
@@ -131,6 +132,23 @@ export default function Home() {
     });
   };
 
+  const handleFolderDeleted = (deletedFolderId) => {
+    setSelectedFolderIds((prev) => {
+      const next = prev.filter((id) => String(id) !== String(deletedFolderId));
+
+      if (next.length === 0 && selectedDocumentIds.length === 0) {
+        setScopeType("global");
+      }
+
+      return next;
+    });
+    setWorkspaceRefreshKey((currentKey) => currentKey + 1);
+  };
+
+  const handleFolderChanged = () => {
+    setWorkspaceRefreshKey((currentKey) => currentKey + 1);
+  };
+
   const handleUploadSuccess = (uploadData) => {
     setDocumentId(uploadData.document_id);
     setMetadataDocumentId(uploadData.document_id);
@@ -224,6 +242,9 @@ export default function Home() {
         <button className={activeTab === "repo" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("repo")}>
           Repository
         </button>
+        <button className={activeTab === "folders" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("folders")}>
+          Folders
+        </button>
       </nav>
 
       <section className="semantic-workspace" aria-label="Gold analyst workspace" hidden={activeTab !== "main"}>
@@ -259,6 +280,15 @@ export default function Home() {
           onUseDocument={handleToggleScopedDocument}
           onViewMetadata={handleViewDocumentMetadata}
           onDeleteDocument={handleDeleteDocument}
+        />
+      </div>
+
+      <div hidden={activeTab !== "folders"}>
+        <FoldersView
+          key={`folders-view-${workspaceRefreshKey}`}
+          onUseDocument={handleToggleScopedDocument}
+          onFolderChanged={handleFolderChanged}
+          onFolderDeleted={handleFolderDeleted}
         />
       </div>
 
