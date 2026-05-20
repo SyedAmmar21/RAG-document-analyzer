@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { uploadFile } from "../services/api";
+import DuplicateAlert from "./DuplicateAlert";
 
 export default function UploadModal({
   isOpen,
@@ -10,6 +11,8 @@ export default function UploadModal({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [showDuplicateAlert, setShowDuplicateAlert] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState({});
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
@@ -29,20 +32,30 @@ export default function UploadModal({
 
     try {
       const res = await uploadFile(file);
-      setMessage(res.message || "Document uploaded successfully.");
+      
+      if (res.is_duplicate) {
+        // Show duplicate alert and don't close the modal yet
+        setDuplicateInfo({
+          fileName: res.file_name || file.name,
+          documentNumber: res.document_number,
+        });
+        setShowDuplicateAlert(true);
+      } else {
+        setMessage(res.message || "Document uploaded successfully.");
+        // Only close for non-duplicate uploads
+        setTimeout(onClose, 500);
+      }
       
       onUploadSuccess({
         document_id: res.document_id,
         file_name: res.file_name || file.name,
         metadata_suggestions: res.metadata_suggestions,
         domain_suggestion: res.domain_suggestion,
-        is_duplicate: Boolean(res.duplicate),
+        is_duplicate: Boolean(res.is_duplicate),
       });
 
       setFile(null);
       setMessage("");
-      // Close modal after successful upload
-      setTimeout(onClose, 500);
     } catch (error) {
       setError(error.message || "Upload failed. Please try again.");
     } finally {
@@ -50,7 +63,14 @@ export default function UploadModal({
     }
   };
 
-  if (!isOpen) return null;
+  const handleDuplicateAlertClose = () => {
+    setShowDuplicateAlert(false);
+    // Close the upload modal after acknowledging the duplicate alert
+    onClose();
+  };
+
+  // Keep modal open if showing duplicate alert, even if parent tries to close it
+  if (!isOpen && !showDuplicateAlert) return null;
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -93,6 +113,13 @@ export default function UploadModal({
         {message && <p className="success-text">{message}</p>}
         {error && <p className="error-text">{error}</p>}
       </div>
+      
+      <DuplicateAlert
+        isOpen={showDuplicateAlert}
+        onClose={handleDuplicateAlertClose}
+        fileName={duplicateInfo.fileName}
+        documentNumber={duplicateInfo.documentNumber}
+      />
     </div>
   );
 }
