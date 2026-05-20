@@ -26,7 +26,14 @@ TRACKING_QUERY_KEYS = {
     "mc_eid",
     "ref",
 }
-
+GOLD_NEWS_QUERY = (
+    "gold prices today latest news "
+    "Federal Reserve inflation real yields "
+    "central bank gold buying "
+    "gold ETF inflows "
+    "safe haven geopolitical tensions "
+    "gold mining supply disruption"
+)
 
 def _get_tavily_client() -> TavilyClient:
     if not TAVILY_API_KEY:
@@ -39,16 +46,11 @@ def search_gold_news(max_results: int = MAX_NEWS_ARTICLES) -> Dict[str, Any]:
     try:
         client = _get_tavily_client()
         return client.search(
-            query=(
-                "latest gold market news gold price Federal Reserve "
-                "inflation central banks geopolitics"
-                "central bank gold buying latest news"
-                "gold mining supply disruption latest news"
-                "gold market outlook analysis latest"
-
-            ),
+            query= GOLD_NEWS_QUERY,
             topic="news",
             max_results=max_results,
+            days=1,
+            search_depth="advanced",
         )
     except Exception as error:
         logger.exception("Tavily gold news search failed")
