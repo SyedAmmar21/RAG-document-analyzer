@@ -34,7 +34,7 @@ Unlike traditional RAG systems, this platform combines:
 
 # Features
 
-## 📤 Intelligent Document Ingestion
+## Intelligent Document Ingestion
 Supports:
 - PDF
 - DOCX
@@ -51,7 +51,7 @@ Pipeline:
 
 ---
 
-## 📰 Automated News Ingestion (Tavily Integration)
+## Automated News Ingestion (Tavily Integration)
 
 The platform integrates with Tavily to continuously ingest fresh online news.
 
@@ -68,7 +68,7 @@ This allows the knowledge base to evolve dynamically with real-world information
 
 ---
 
-## 🤖 AI Metadata Extraction
+## AI Metadata Extraction
 
 The system automatically extracts:
 - Title
@@ -88,7 +88,7 @@ Metadata is used for:
 
 ---
 
-# 🧠 Hybrid Embedding Architecture
+# Hybrid Embedding Architecture
 
 One of the core innovations of the project.
 
@@ -108,7 +108,7 @@ This improves:
 
 ---
 
-# 🧩 Adaptive Domain Centroid System
+# Adaptive Domain Centroid System
 
 Domains are not static folders.
 
@@ -128,7 +128,7 @@ This creates a self-improving semantic organization system.
 
 ---
 
-# 🔍 Semantic Search & Retrieval
+# Semantic Search & Retrieval
 
 Powered by:
 - Elasticsearch vector search
@@ -144,7 +144,7 @@ Supports:
 
 ---
 
-# 💬 Multi-Document RAG Agent
+# Multi-Document RAG Agent
 
 Built using LangChain.
 
@@ -163,7 +163,7 @@ Prompts are designed to:
 
 ---
 
-# 🖥️ Frontend Features
+# Frontend Features
 
 Built with React + Vite.
 
@@ -178,7 +178,7 @@ Includes:
 
 ---
 
-# 🏗️ Architecture
+# Architecture
 
 ```text
 ┌────────────────────────────────────────────────────────────┐
@@ -202,7 +202,7 @@ Includes:
 
 ---
 
-# 🛠️ Tech Stack
+# Tech Stack
 
 ## Frontend
 | Layer | Technology |
@@ -228,7 +228,7 @@ Includes:
 
 ---
 
-# 📁 Project Structure
+# Project Structure
 
 ```bash
 Internproject2/
@@ -266,7 +266,7 @@ Internproject2/
 
 ---
 
-# 🔄 Full System Flow
+# Full System Flow
 
 ```text
 Upload File / Fetch News
@@ -292,9 +292,9 @@ RAG Agent Response Generation
 
 ---
 
-# 📌 Core Technical Highlights
+# Core Technical Highlights
 
-## ✅ Hybrid Semantic Routing
+## Hybrid Semantic Routing
 Combines:
 - Metadata embeddings
 - Document chunk centroid embeddings
@@ -303,17 +303,17 @@ for stronger semantic understanding.
 
 ---
 
-## ✅ Adaptive Domain Intelligence
+## Adaptive Domain Intelligence
 Domains continuously evolve as more documents are added.
 
 ---
 
-## ✅ Multi-Document AI Reasoning
+## Multi-Document AI Reasoning
 The RAG agent reasons across multiple sources instead of isolated QA.
 
 ---
 
-## ✅ Automated News Knowledge Expansion
+## Automated News Knowledge Expansion
 Fresh external news is automatically:
 - collected
 - processed
@@ -325,7 +325,7 @@ into the knowledge base.
 
 ---
 
-# 🚀 Future Improvements
+# Future Improvements
 
 Potential upgrades:
 - Streaming AI responses
@@ -339,7 +339,7 @@ Potential upgrades:
 
 ---
 
-# 📄 Overall
+# Overall
 
 This project goes beyond a basic chatbot or standard RAG demo.
 
