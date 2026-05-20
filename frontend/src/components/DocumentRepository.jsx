@@ -178,7 +178,7 @@ export default function DocumentRepository({
                           aria-pressed={isSelected}
                           title={isSelected ? "Document is selected" : "Use document"}
                         >
-                          {isSelected ? "Selected" : "Use"}
+                          Use
                         </button>
                         <button
                           className="secondary-button table-button repository-action-button"
@@ -186,7 +186,7 @@ export default function DocumentRepository({
                           onClick={() => handleViewDocument(document.document_id)}
                           title="View document"
                         >
-                          View
+                          Open
                         </button>
                         <button
                           className="secondary-button table-button repository-action-button"
@@ -202,8 +202,9 @@ export default function DocumentRepository({
                           onClick={() => handleDelete(document.document_id)}
                           disabled={deletingId === document.document_id}
                           title="Delete document"
+                          aria-label="Delete document"
                         >
-                          {deletingId === document.document_id ? "Deleting..." : "Delete"}
+                          {deletingId === document.document_id ? "..." : "🗑"}
                         </button>
                       </div>
                     </td>
