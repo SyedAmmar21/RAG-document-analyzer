@@ -1,12 +1,12 @@
-import { useState } from "react";
-import ChatWindow from "../components/ChatWindow";
+import { useState, useEffect, useCallback } from "react";
+import ChatWindow, { NewsModalListItems } from "../components/ChatWindow";
 import DocumentRepository from "../components/DocumentRepository";
 import FoldersView from "../components/FoldersView";
 import SidebarFolders from "../components/SidebarFolders";
 import UploadModal from "../components/UploadModal";
 import MetadataModal from "../components/MetadataModal";
 import DuplicateAlert from "../components/DuplicateAlert";
-import { getDocumentMetadata } from "../services/api";
+import { getDocumentMetadata, getScheduledIngestionSummary } from "../services/api";
 
 function rowsToMetadataSuggestions(rows) {
   const metadata = {
@@ -50,6 +50,28 @@ export default function Home() {
   const [scopeType, setScopeType] = useState("global");
   const [selectedFolderIds, setSelectedFolderIds] = useState([]);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState([]);
+
+  // ── Scheduled Ingestion Auto-Detection State ──
+  const [scheduledNewsSummary, setScheduledNewsSummary] = useState(null);
+
+  // Poll backend every 30s for completed scheduled ingestion
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const summary = await getScheduledIngestionSummary();
+        // If summary has data, a scheduled run just completed
+        if (summary && (summary.total_processed > 0 || summary.total_failed > 0 || summary.total_skipped > 0 || summary.error)) {
+          setScheduledNewsSummary(summary);
+          // Auto-refresh document list to show new articles
+          setWorkspaceRefreshKey((k) => k + 1);
+        }
+      } catch {
+        // Ignore polling errors — silent fail
+      }
+    }, 30000);
+
+    return () => clearInterval(pollInterval);
+  }, []);
 
   const loadMetadataForDocument = async (docId) => {
     try {
@@ -313,6 +335,62 @@ export default function Home() {
         fileName={duplicateDocument?.fileName}
         documentNumber={duplicateDocument?.documentNumber}
       />
+
+      {/* Scheduled ingestion summary modal — reuses ChatWindow's NewsModalListItems */}
+      {scheduledNewsSummary && (
+        <div className="modal-overlay">
+          <div className="news-summary-modal" role="dialog" aria-modal="true" aria-labelledby="scheduled-news-summary-title">
+            <div className="modal-header">
+              <div>
+                <p className="section-kicker">Scheduled ingestion</p>
+                <h2 id="scheduled-news-summary-title">Gold News Download Complete</h2>
+              </div>
+              <button
+                className="close-button"
+                onClick={() => setScheduledNewsSummary(null)}
+                aria-label="Close news ingestion summary"
+                type="button"
+              >
+                x
+              </button>
+            </div>
+
+            <p className="news-summary-counts">
+              {scheduledNewsSummary.total_processed || 0} processed, {scheduledNewsSummary.total_skipped || 0} skipped, {scheduledNewsSummary.total_failed || 0} failed
+            </p>
+
+            <div className="news-summary-list">
+              <NewsModalListItems
+                articles={scheduledNewsSummary.processed || []}
+                className=""
+                pillLabel="Processed"
+                pillClass="success-pill"
+                detailField="domain"
+              />
+              <NewsModalListItems
+                articles={scheduledNewsSummary.skipped || []}
+                className="skipped"
+                pillLabel="Skipped"
+                pillClass="skipped-pill"
+                detailField="reason"
+              />
+              <NewsModalListItems
+                articles={scheduledNewsSummary.failed || []}
+                className="failed"
+                pillLabel="Failed"
+                pillClass="failure-pill"
+                detailField="error"
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button className="primary-button" type="button" onClick={() => setScheduledNewsSummary(null)}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

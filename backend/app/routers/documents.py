@@ -62,9 +62,12 @@ async def get_documents():
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT rowid AS number, id, file_path, created_date
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY created_date DESC) AS number,
+        id,
+        file_path,
+        created_date
     FROM documents
-    ORDER BY created_date DESC
     """)
     rows = cursor.fetchall()
 

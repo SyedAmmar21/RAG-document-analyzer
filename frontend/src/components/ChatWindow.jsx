@@ -3,7 +3,7 @@ import { ingestLatestGoldNews, queryAgent } from "../services/api";
 import MarkdownMessage from "./MarkdownMessage";
 
 // Helper component for news modal list items
-function NewsModalListItems({ articles, className, pillLabel, pillClass, detailField }) {
+export function NewsModalListItems({ articles, className, pillLabel, pillClass, detailField }) {
   return articles.map((article, index) => (
     <div className={`news-summary-row ${className}`} key={article.document_id || `${article.url || article.title}-${index}`}>
       <div>

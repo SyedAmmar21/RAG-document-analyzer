@@ -4,6 +4,7 @@ Manages APScheduler lifecycle and scheduled jobs.
 """
 import logging
 from datetime import datetime
+from typing import Any, Dict, Optional
 
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -16,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 # Global scheduler instance (prevents duplicate creation during reloads)
 _scheduler: BackgroundScheduler | None = None
+# Stores the latest scheduled ingestion result for frontend polling
+_latest_scheduled_result: Dict[str, Any] = {}
 MALAYSIA_TZ = pytz.timezone("Asia/Kuala_Lumpur")
 
 
@@ -24,6 +27,8 @@ def _scheduled_news_ingestion():
     Background job function executed by APScheduler.
     Runs daily at 10:00 AM Malaysia time.
     """
+    global _latest_scheduled_result
+    
     logger.info("🔄 Scheduled news ingestion started")
     
     try:
@@ -33,6 +38,17 @@ def _scheduled_news_ingestion():
         failed = result.get("total_failed", 0)
         skipped = result.get("total_skipped", 0)
         
+        # Store result for frontend polling
+        _latest_scheduled_result = {
+            "completed_at": datetime.now().isoformat(),
+            "total_processed": processed,
+            "total_failed": failed,
+            "total_skipped": skipped,
+            "processed": result.get("processed", []),
+            "failed": result.get("failed", []),
+            "skipped": result.get("skipped", []),
+        }
+        
         logger.info(
             "✅ Scheduled news ingestion completed: "
             "%d processed, %d failed, %d skipped",
@@ -40,6 +56,30 @@ def _scheduled_news_ingestion():
         )
     except Exception as error:
         logger.exception("❌ Scheduled news ingestion failed: %s", str(error))
+        _latest_scheduled_result = {
+            "completed_at": datetime.now().isoformat(),
+            "error": str(error),
+            "total_processed": 0,
+            "total_failed": 0,
+            "total_skipped": 0,
+            "processed": [],
+            "failed": [],
+            "skipped": [],
+        }
+
+
+def get_latest_scheduled_result() -> Dict[str, Any]:
+    """
+    Return the latest scheduled ingestion result.
+    Returns empty dict if no scheduled run has completed yet.
+    """
+    return _latest_scheduled_result.copy() if _latest_scheduled_result else {}
+
+
+def clear_latest_scheduled_result():
+    """Clear the stored result after frontend has seen it."""
+    global _latest_scheduled_result
+    _latest_scheduled_result = {}
 
 
 def start_scheduler():

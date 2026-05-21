@@ -86,6 +86,12 @@ export const ingestLatestGoldNews = async () => {
   return parseResponse(res);
 };
 
+export const getScheduledIngestionSummary = async () => {
+  const res = await fetch(`${BASE_URL}/news/scheduled-summary`);
+
+  return parseResponse(res);
+};
+
 export const deleteDocument = async (document_id) => {
   const res = await fetch(`${BASE_URL}/documents/${document_id}`, {
     method: "DELETE",
