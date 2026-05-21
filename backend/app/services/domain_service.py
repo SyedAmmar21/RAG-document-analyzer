@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+from pathlib import Path
 from app.db.database import get_connection
-import os
 import json
 from app.services.vector_service import embeddings
 
@@ -300,7 +300,7 @@ def get_documents_by_domain(domain_id: int):
     return [
         {
             "document_id": row["id"],
-            "file_name": os.path.basename(row["file_path"]),
+            "file_name": Path(row["file_path"]).name,
             "file_path": row["file_path"],
             "created_date": row["created_date"],
         }
@@ -334,7 +334,7 @@ def get_unorganized_documents():
     return [
         {
             "document_id": row["id"],
-            "file_name": os.path.basename(row["file_path"]),
+            "file_name": Path(row["file_path"]).name,
             "file_path": row["file_path"],
             "created_date": row["created_date"],
         }

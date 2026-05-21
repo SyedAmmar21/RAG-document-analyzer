@@ -1,6 +1,6 @@
-import os
 import mimetypes
 from sqlite3 import IntegrityError
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from elasticsearch import Elasticsearch
@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.core.config import ELASTICSEARCH_HOST
+from app.core.paths import resolve_storage_path, UPLOAD_DIR, NEWS_ARTICLES_DIR
 from app.db.database import get_connection
 from app.services.document_service import get_document_by_id
 from app.services.domain_service import (
@@ -118,7 +119,7 @@ async def get_documents():
         {
             "number": row["number"],
             "document_id": row["id"],
-            "file_name": os.path.basename(row["file_path"]),
+            "file_name": Path(row["file_path"]).name,
             "published_date": published_dates.get(row["id"]),
             "status": "ready",
             "created_date": row["created_date"],
@@ -146,7 +147,7 @@ async def delete_document(document_id: str):
         conn.close()
         raise HTTPException(status_code=404, detail="Document not found")
 
-    file_path = row["file_path"]
+    relative_path = row["file_path"]
 
     cursor.execute(
         "DELETE FROM document_metadata WHERE document_id = ?",
@@ -165,8 +166,16 @@ async def delete_document(document_id: str):
     conn.commit()
     conn.close()
 
-    if file_path and os.path.exists(file_path):
-        os.remove(file_path)
+    # Delete the actual file
+    if relative_path:
+        try:
+            absolute_path = resolve_storage_path(relative_path)
+            if absolute_path.exists():
+                absolute_path.unlink()
+        except (ValueError, OSError) as e:
+            # If path resolution fails or file doesn't exist, that's okay
+            # Document record was already deleted from DB
+            pass
 
     es.delete_by_query(
         index="documents",
@@ -191,22 +200,42 @@ async def view_document(document_id: str):
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    file_path = document["file_path"]
+    stored_path = document["file_path"]
+    file_name = document["file_name"]
 
-    if not file_path or not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Document file not found")
+    try:
+        # Try to resolve the stored path
+        absolute_path = resolve_storage_path(stored_path)
+        
+        # If path doesn't exist and is absolute (old database record), try to find it locally
+        if not absolute_path.exists() and absolute_path.is_absolute():
+            # Check uploads
+            local_upload_path = UPLOAD_DIR / file_name
+            if local_upload_path.exists():
+                absolute_path = local_upload_path
+            else:
+                # Check news articles
+                local_news_path = NEWS_ARTICLES_DIR / file_name
+                if local_news_path.exists():
+                    absolute_path = local_news_path
+                else:
+                    raise HTTPException(status_code=404, detail="Document file not found")
+        
+        if not absolute_path.exists():
+            raise HTTPException(status_code=404, detail="Document file not found")
+        
+        media_type, _ = mimetypes.guess_type(str(absolute_path))
+        safe_file_name = file_name.replace('"', "")
 
-    media_type, _ = mimetypes.guess_type(file_path)
-
-    safe_file_name = document["file_name"].replace('"', "")
-
-    return FileResponse(
-        file_path,
-        media_type=media_type or "application/octet-stream",
-        headers={
-            "Content-Disposition": f'inline; filename="{safe_file_name}"',
-        },
-    )
+        return FileResponse(
+            str(absolute_path),
+            media_type=media_type or "application/octet-stream",
+            headers={
+                "Content-Disposition": f'inline; filename="{safe_file_name}"',
+            },
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=f"Invalid document path: {str(e)}")
 
 
 @router.get("/documents/{document_id}/metadata")

@@ -1,11 +1,7 @@
 import sqlite3
-import os
 from datetime import datetime, timezone, timedelta
+from app.core.paths import DB_PATH, ensure_directories_exist
 
-# Get absolute path to this file
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-DB_PATH = os.path.join(BASE_DIR, "documents.db")
 MALAYSIA_TZ = timezone(timedelta(hours=8))
 
 DEFAULT_DOMAINS = [
@@ -25,13 +21,14 @@ DEFAULT_DOMAINS = [
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db():
-    os.makedirs(BASE_DIR, exist_ok=True)
+    # Ensure all required directories exist
+    ensure_directories_exist()
 
     conn = get_connection()
     cursor = conn.cursor()

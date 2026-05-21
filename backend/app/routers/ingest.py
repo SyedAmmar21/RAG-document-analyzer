@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File
-import os
 import logging
+from pathlib import Path
 
 from app.services.file_service import (
     validate_file_type,
@@ -53,7 +53,7 @@ async def ingest_file(file: UploadFile = File(...)):
     return {
         "message": "File uploaded and indexed",
         "document_id": pipeline_result["document_id"],
-        "file_name": os.path.basename(file_path),
+        "file_name": Path(file_path).name,
         "file_path": file_path,
         "preview": pipeline_result["preview"],
         "metadata_suggestions": pipeline_result["metadata_suggestions"],

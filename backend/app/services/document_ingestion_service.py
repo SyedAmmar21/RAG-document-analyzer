@@ -1,5 +1,5 @@
-import os
 import logging
+from pathlib import Path
 from app.services.text_extraction_service import extract_text
 from app.services.document_service import (
     create_document_record,
@@ -26,6 +26,7 @@ from app.services.domain_service import (
     get_all_domains,
     get_domain_by_name,
 )
+from app.core.paths import resolve_storage_path
 
 
 logger = logging.getLogger(__name__)
@@ -81,28 +82,123 @@ def process_document_pipeline(
     file_path: str,
     original_filename: str
 ):
+    """
+    Process a document through the ingestion pipeline.
+    
+    Args:
+        file_path: Relative path to the file (e.g., "uploads/file.pdf")
+        original_filename: Original filename for metadata and duplicate detection
+    """
     document_id = None
 
+    # Convert relative path to absolute for file operations
+    absolute_path = resolve_storage_path(file_path)
+
     # Extract text
-    extracted_text = extract_text(file_path)
+    extracted_text = extract_text(str(absolute_path))
 
     if not extracted_text or not extracted_text.strip():
         raise ValueError("No extractable text found in document.")
 
     # File metadata
-    file_size = os.path.getsize(file_path)
+    file_size = absolute_path.stat().st_size
 
-    file_type = (
-        os.path.splitext(original_filename)[1]
-        .replace(".", "")
-    )
+    file_type = Path(original_filename).suffix.lstrip(".")
 
-    # Create DB document
+    # Create DB document with relative path and original filename
     document_id = create_document_record(
         file_path=file_path,
         file_size=file_size,
-        file_type=file_type
+        file_type=file_type,
+        original_filename=original_filename
     )
+
+    try:
+        # Metadata extraction
+        metadata_suggestions = extract_metadata(
+            extracted_text
+        )
+
+        saved_metadata = save_metadata(
+            document_id,
+            metadata_suggestions
+        )
+
+        # Extract and save source URL if present
+        source_url = _extract_source_url_from_text(extracted_text)
+        if source_url:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO document_metadata (document_id, field, value)
+                VALUES (?, ?, ?)
+                """,
+                (document_id, "source_url", source_url)
+            )
+            conn.commit()
+            conn.close()
+
+        # Vector indexing
+        index_document(
+            document_id,
+            extracted_text
+        )
+
+        # Hybrid semantic embedding
+        document_embedding = generate_hybrid_embedding(
+            document_id=document_id,
+            metadata=metadata_suggestions,
+        )
+
+        # Domain assignment
+        domain_suggestion = get_best_matching_domain(
+            document_embedding
+        )
+
+        assigned_domain = None
+
+        if not domain_suggestion:
+            available_domains = [
+                domain
+                for domain in get_all_domains()
+                if domain.get("id") != "unorganized"
+            ]
+            fallback = assign_domain(metadata_suggestions, available_domains)
+            fallback_name = fallback.get("suggested_domain")
+            fallback_domain = get_domain_by_name(fallback_name) if fallback_name else None
+
+            if fallback_domain:
+                domain_suggestion = {
+                    "id": fallback_domain["id"],
+                    "name": fallback_domain["name"],
+                    "similarity": fallback.get("confidence"),
+                    "assignment_method": "metadata_fallback",
+                }
+
+        if domain_suggestion:
+            assigned_domain = assign_document_to_domain(
+                document_id,
+                domain_suggestion["id"],
+                domain_suggestion.get("similarity")
+            )
+    except Exception:
+        if document_id:
+            _cleanup_failed_document(document_id)
+        logger.exception("Document ingestion failed for %s", original_filename)
+        raise
+
+    return {
+        "document_id": document_id,
+        "file_name": Path(original_filename).name,
+        "file_path": file_path,
+        "metadata_suggestions": metadata_suggestions,
+        "saved_metadata": saved_metadata,
+        "domain_suggestion": domain_suggestion,
+        "assigned_domain": assigned_domain,
+        "preview": extracted_text[:300]
+    }
+
 
     try:
         # Metadata extraction

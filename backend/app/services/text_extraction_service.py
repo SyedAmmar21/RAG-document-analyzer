@@ -1,22 +1,35 @@
-import os
+from pathlib import Path
 from pypdf import PdfReader
 from docx import Document
+from app.core.paths import resolve_storage_path
 
 
 def extract_text(file_path: str) -> str:
-    ext = os.path.splitext(file_path)[1].lower()
+    """
+    Extract text from a document file.
+    
+    Args:
+        file_path: Path to the file (can be absolute or relative)
+    
+    Returns:
+        Extracted text content
+    """
+    # Ensure we have an absolute path
+    absolute_path = resolve_storage_path(file_path) if not Path(file_path).is_absolute() else Path(file_path)
+    
+    ext = absolute_path.suffix.lower()
 
     if ext == ".txt":
-        return extract_txt(file_path)
+        return extract_txt(str(absolute_path))
 
     elif ext == ".pdf":
-        return extract_pdf(file_path)
+        return extract_pdf(str(absolute_path))
 
     elif ext == ".docx":
-        return extract_docx(file_path)
+        return extract_docx(str(absolute_path))
 
     else:
-        raise ValueError("Unsupported file type")
+        raise ValueError(f"Unsupported file type: {ext}")
 
 
 # ---------- TXT ----------

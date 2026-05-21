@@ -1,9 +1,9 @@
 import logging
-import os
 import re
 import uuid
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from pathlib import Path
 
 import trafilatura
 from tavily import TavilyClient
@@ -11,11 +11,11 @@ from tavily import TavilyClient
 from app.core.config import TAVILY_API_KEY
 from app.db.database import get_connection
 from app.services.document_ingestion_service import process_document_pipeline
+from app.core.paths import NEWS_ARTICLES_DIR, to_relative_storage_path, resolve_storage_path, ensure_directories_exist
 
 
 logger = logging.getLogger(__name__)
 
-NEWS_STORAGE_DIR = os.path.join("storage", "news_articles")
 MAX_NEWS_ARTICLES = 10
 MIN_ARTICLE_CHARACTERS = 500
 TRACKING_QUERY_PREFIXES = ("utm_",)
@@ -150,9 +150,9 @@ def _canonicalize_url(url: Optional[str]) -> Optional[str]:
 
 
 def _get_existing_news_urls() -> set[str]:
-    if not os.path.isdir(NEWS_STORAGE_DIR):
-        return set()
-
+    """Get all URLs from existing news articles in the database."""
+    ensure_directories_exist()
+    
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -161,7 +161,7 @@ def _get_existing_news_urls() -> set[str]:
         FROM documents
         WHERE file_path LIKE ?
         """,
-        (f"%{NEWS_STORAGE_DIR.replace(os.sep, '%')}%",)
+        ("news_articles/%",)
     )
     rows = cursor.fetchall()
     conn.close()
@@ -169,12 +169,18 @@ def _get_existing_news_urls() -> set[str]:
     existing_urls = set()
 
     for row in rows:
-        file_path = row["file_path"]
-        if not file_path or not os.path.exists(file_path):
+        relative_path = row["file_path"]
+        if not relative_path:
             continue
-
+        
         try:
-            with open(file_path, "r", encoding="utf-8") as file:
+            # Resolve to absolute path
+            absolute_path = resolve_storage_path(relative_path)
+            
+            if not absolute_path.exists():
+                continue
+            
+            with open(absolute_path, "r", encoding="utf-8") as file:
                 for _ in range(5):
                     line = file.readline()
                     if not line:
@@ -187,7 +193,7 @@ def _get_existing_news_urls() -> set[str]:
                             existing_urls.add(canonical_url)
                         break
         except OSError:
-            logger.warning("Could not inspect existing news file for URL: %s", file_path)
+            logger.warning("Could not inspect existing news file for URL: %s", relative_path)
 
     return existing_urls
 
@@ -204,10 +210,22 @@ def save_article_as_txt(
     url: Optional[str] = None,
     published_date: Optional[str] = None,
 ) -> str:
-    os.makedirs(NEWS_STORAGE_DIR, exist_ok=True)
+    """
+    Save a news article as a text file.
+    
+    Args:
+        title: Article title
+        text: Article content
+        url: Source URL
+        published_date: Publication date
+    
+    Returns:
+        Relative path to the saved article (for database storage)
+    """
+    ensure_directories_exist()
 
     filename = f"{_sanitize_title(title)}_{uuid.uuid4().hex[:8]}.txt"
-    file_path = os.path.join(NEWS_STORAGE_DIR, filename)
+    absolute_path = NEWS_ARTICLES_DIR / filename
 
     header = [
         f"Title: {title or 'Untitled'}",
@@ -221,10 +239,12 @@ def save_article_as_txt(
 
     content = "\n".join(header) + "\n\n" + text.strip()
 
-    with open(file_path, "w", encoding="utf-8") as file:
+    with open(absolute_path, "w", encoding="utf-8") as file:
         file.write(content)
 
-    return file_path
+    # Return relative path for database storage
+    relative_path = to_relative_storage_path(absolute_path)
+    return relative_path
 
 
 def _domain_name_from_pipeline_result(pipeline_result: Dict[str, Any]) -> Optional[str]:
@@ -377,7 +397,7 @@ def ingest_latest_gold_news(max_results: int = MAX_NEWS_ARTICLES) -> Dict[str, A
 
             pipeline_result = process_document_pipeline(
                 file_path=file_path,
-                original_filename=os.path.basename(file_path),
+                original_filename=Path(file_path).name,
             )
 
             processed.append(

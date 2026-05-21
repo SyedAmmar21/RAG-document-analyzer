@@ -1,7 +1,8 @@
-import os
 import uuid
+from pathlib import Path
 from fastapi import UploadFile, HTTPException
-from app.core.config import UPLOAD_DIR, MAX_FILE_SIZE
+from app.core.config import MAX_FILE_SIZE
+from app.core.paths import UPLOAD_DIR, to_relative_storage_path, ensure_directories_exist
 
 ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx"}
 
@@ -22,24 +23,30 @@ def validate_file_size(file: UploadFile):
         raise HTTPException(status_code=400, detail="File exceeds 5MB limit")
 
 
-def save_file(file: UploadFile):
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+def save_file(file: UploadFile) -> str:
+    """
+    Save an uploaded file to UPLOAD_DIR and return its relative storage path.
+    
+    Args:
+        file: The UploadFile from FastAPI
+        
+    Returns:
+        Relative path suitable for database storage (e.g., "uploads/file_123.pdf")
+    """
+    ensure_directories_exist()
 
     original_name = file.filename
-    name, ext = os.path.splitext(original_name)
+    name, ext = Path(original_name).stem, Path(original_name).suffix
 
-    base_filename = f"{name}_edited{ext}"
-    file_path = os.path.join(UPLOAD_DIR, base_filename)
+    # Use UUID to ensure unique filenames and avoid collisions
+    unique_filename = f"{name}_{uuid.uuid4().hex[:8]}{ext}"
+    absolute_path = UPLOAD_DIR / unique_filename
 
-    counter = 1
-
-    # Handle duplicate names
-    while os.path.exists(file_path):
-        new_filename = f"{name}_edited_{counter}{ext}"
-        file_path = os.path.join(UPLOAD_DIR, new_filename)
-        counter += 1
-
-    with open(file_path, "wb") as f:
+    # Save file
+    with open(absolute_path, "wb") as f:
         f.write(file.file.read())
 
-    return file_path
+    # Return relative path for database storage
+    relative_path = to_relative_storage_path(absolute_path)
+    return relative_path
+

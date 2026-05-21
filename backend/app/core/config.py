@@ -3,10 +3,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-UPLOAD_DIR = os.getenv("UPLOAD_DIR")
-OUTPUT_DIR = os.getenv("OUTPUT_DIR")
-MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE"))
+# File storage limits
+MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", 5242880))  # Default 5MB
 
+# API Keys
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")

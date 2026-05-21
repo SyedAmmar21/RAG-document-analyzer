@@ -1,14 +1,23 @@
 import uuid
 import json
-import os
-import re
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from app.db.database import get_connection
+from app.core.paths import resolve_storage_path, to_relative_storage_path
 
 MALAYSIA_TZ = timezone(timedelta(hours=8))
 
 
-def create_document_record(file_path: str, file_size: int, file_type: str):
+def create_document_record(file_path: str, file_size: int, file_type: str, original_filename: str = None):
+    """
+    Create a new document record in the database.
+    
+    Args:
+        file_path: Relative path to the file (e.g., "uploads/file.pdf")
+        file_size: File size in bytes
+        file_type: File extension/type (e.g., "pdf")
+        original_filename: Original filename for duplicate detection
+    """
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -18,6 +27,7 @@ def create_document_record(file_path: str, file_size: int, file_type: str):
     metadata = {
         "file_size": file_size,
         "file_type": file_type,
+        "original_filename": original_filename,
         "ai_responses": []
     }
 
@@ -38,17 +48,16 @@ def create_document_record(file_path: str, file_size: int, file_type: str):
 
 
 def find_document_by_upload_name(filename: str):
-    name, ext = os.path.splitext(filename)
-    expected_pattern = re.compile(
-        rf"^{re.escape(name)}_edited(?:_\d+)?{re.escape(ext)}$",
-        re.IGNORECASE
-    )
-
+    """
+    Find an existing document by original filename (for duplicate detection).
+    
+    This searches through metadata to find a document with the same original filename.
+    """
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT rowid AS number, id, created_date, file_path
+    SELECT rowid AS number, id, created_date, file_path, meta_json
     FROM documents
     ORDER BY created_date DESC
     """)
@@ -56,17 +65,28 @@ def find_document_by_upload_name(filename: str):
     conn.close()
 
     for row in rows:
-        file_name = os.path.basename(row["file_path"])
-        if expected_pattern.match(file_name):
-            return {
-                "number": row["number"],
-                "document_id": row["id"],
-                "file_name": file_name,
-                "file_path": row["file_path"],
-                "created_date": row["created_date"],
-            }
+        try:
+            metadata = json.loads(row["meta_json"])
+            original_filename = metadata.get("original_filename", "")
+            
+            # Match by original filename
+            if original_filename and original_filename.lower() == filename.lower():
+                stored_path = row["file_path"]
+                # Extract just the filename from stored path
+                file_name = Path(stored_path).name
+                
+                return {
+                    "number": row["number"],
+                    "document_id": row["id"],
+                    "file_name": file_name,
+                    "file_path": stored_path,
+                    "created_date": row["created_date"],
+                }
+        except (json.JSONDecodeError, KeyError):
+            continue
 
     return None
+
 
 
 # ADD AI RESPONSE
@@ -108,7 +128,9 @@ def add_ai_response(document_id: str, query: str, response: str):
     conn.commit()
     conn.close()
 
+
 def get_document_by_id(document_id: str):
+    """Get document by ID and return with relative path."""
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -125,9 +147,12 @@ def get_document_by_id(document_id: str):
     if not row:
         return None
 
+    # Extract filename from relative path
+    file_name = Path(row["file_path"]).name
+    
     return {
         "document_id": row["id"],
         "file_path": row["file_path"],
-        "file_name": os.path.basename(row["file_path"]),
+        "file_name": file_name,
         "created_date": row["created_date"],
     }
