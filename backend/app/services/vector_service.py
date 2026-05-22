@@ -1,10 +1,15 @@
 from elasticsearch import Elasticsearch
 from app.core.config import ELASTICSEARCH_HOST
 from langchain_openai import OpenAIEmbeddings
+import os
 
+ELASTICSEARCH_HOST = os.getenv(
+    "ELASTICSEARCH_HOST",
+    "http://elasticsearch:9200"
+)
 
 es = Elasticsearch(
-    "http://localhost:9200",
+    ELASTICSEARCH_HOST,
     request_timeout=30,
     verify_certs=False
 )
