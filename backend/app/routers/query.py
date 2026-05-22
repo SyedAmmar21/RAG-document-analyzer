@@ -98,11 +98,24 @@ async def query_agent(request: QueryRequest):
         )
 
     # Run agent
-    response = agent.invoke({
-        "messages": [
-            {"role": "user", "content": request.query}
-        ]
-    })
+    response = agent.invoke(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": request.query
+                }
+            ]
+        },
+
+        config={
+            "recursion_limit": 10
+        }
+    )
+
+    print("\n===== AGENT RESPONSE DEBUG =====")
+    print(response)
+    print("================================\n")
 
     # Extract answer
     answer = response["messages"][-1].content
@@ -150,11 +163,24 @@ Rules:
 - Keep the response concise and structured.
 """
 
-    response = agent.invoke({
-        "messages": [
-            {"role": "user", "content": prompt}
-        ]
-    })
+    response = agent.invoke(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": request.query
+                }
+            ]
+        },
+
+        config={
+            "recursion_limit": 10
+        }
+    )
+
+    print("\n===== AGENT RESPONSE DEBUG =====")
+    print(response)
+    print("================================\n")
 
     answer = response["messages"][-1].content
 

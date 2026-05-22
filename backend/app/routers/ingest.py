@@ -14,6 +14,8 @@ from app.services.domain_service import get_document_domain
 from app.services.metadata_service import get_metadata_values
 from app.services.document_ingestion_service import process_document_pipeline
 
+from app.services.document_service import get_all_documents
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -62,4 +64,94 @@ async def ingest_file(file: UploadFile = File(...)):
             or pipeline_result["domain_suggestion"]
         ),
         "is_duplicate": False,
+    }
+
+@router.post("/reindex")
+async def reindex_documents():
+
+    from pathlib import Path
+
+    documents = get_all_documents()
+
+    if not documents:
+        return {
+            "message": "No documents found"
+        }
+
+    success_count = 0
+    failed_documents = []
+
+    for document in documents:
+
+        try:
+
+            raw_path = document.get("file_path", "")
+
+            print("\n===================")
+            print("RAW PATH:", raw_path)
+
+            # normalize slashes
+            normalized = raw_path.replace("\\", "/")
+
+            print("NORMALIZED:", normalized)
+
+            # CASE 1:
+            # already absolute docker path
+            if normalized.startswith("/app/storage/"):
+
+                real_path = normalized
+
+            # CASE 2:
+            # storage/uploads/...
+            elif normalized.startswith("storage/uploads/"):
+
+                relative = normalized.replace("storage/uploads/", "")
+                real_path = f"/app/storage/uploads/{relative}"
+
+            # CASE 3:
+            # storage/news_articles/...
+            elif normalized.startswith("storage/news_articles/"):
+
+                relative = normalized.replace("storage/news_articles/", "")
+                real_path = f"/app/storage/news_articles/{relative}"
+
+            # CASE 4:
+            # news_articles/...
+            elif normalized.startswith("news_articles/"):
+
+                relative = normalized.replace("news_articles/", "")
+                real_path = f"/app/storage/news_articles/{relative}"
+
+            # fallback
+            else:
+
+                filename = Path(normalized).name
+                real_path = f"/app/storage/uploads/{filename}"
+
+            print("FINAL PATH:", real_path)
+
+            process_document_pipeline(
+                file_path=real_path,
+                original_filename=Path(real_path).name
+            )
+
+            success_count += 1
+
+        except Exception as e:
+
+            logger.exception(
+                "Failed to reindex %s",
+                document.get("file_path", "unknown")
+            )
+
+            failed_documents.append({
+                "document": document.get("file_path", "unknown"),
+                "error": str(e)
+            })
+
+    return {
+        "message": "Reindex completed",
+        "success_count": success_count,
+        "failed_count": len(failed_documents),
+        "failed_documents": failed_documents
     }

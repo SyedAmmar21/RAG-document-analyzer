@@ -68,6 +68,22 @@ def chunk_text(text, chunk_size=1000, overlap=200):
 
 # index docs
 def index_document(document_id: str, text: str):
+
+    # Delete existing chunks for this document first
+    es.delete_by_query(
+        index="documents",
+        body={
+            "query": {
+                "term": {
+                    "document_id": document_id
+                }
+            }
+        },
+        conflicts="proceed",
+        refresh=True,
+    )
+
+    # Recreate chunks
     chunks = chunk_text(text)
 
     for chunk in chunks:
@@ -80,4 +96,3 @@ def index_document(document_id: str, text: str):
         }
 
         es.index(index="documents", document=doc)
-        

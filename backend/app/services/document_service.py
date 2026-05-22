@@ -5,6 +5,9 @@ from pathlib import Path
 from app.db.database import get_connection
 from app.core.paths import resolve_storage_path, to_relative_storage_path
 
+import sqlite3
+from app.db.database import DB_PATH
+
 MALAYSIA_TZ = timezone(timedelta(hours=8))
 
 
@@ -156,3 +159,20 @@ def get_document_by_id(document_id: str):
         "file_name": file_name,
         "created_date": row["created_date"],
     }
+
+def get_all_documents():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM documents
+    """)
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return [dict(row) for row in rows]
