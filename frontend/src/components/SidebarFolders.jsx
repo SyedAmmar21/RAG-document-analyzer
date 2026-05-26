@@ -149,11 +149,7 @@ export default function SidebarFolders({
                 key={folder.id}
                 className={`folder-item ${isSelected ? "selected" : ""}`}
               >
-                <button
-                  className="folder-row"
-                  onClick={() => toggleFolder(folder)}
-                  type="button"
-                >
+                <div className="folder-row-container">
                   {onToggleFolderSelection && (
                     <button
                       className={`scope-toggle ${isSelected ? "selected" : ""}`}
@@ -167,22 +163,27 @@ export default function SidebarFolders({
                       {isSelected ? "✓" : "○"}
                     </button>
                   )}
-
-                  <span className="folder-icon">
-                    {isUnorganized ? "📋" : (isOpen ? "📂" : "📁")}
-                  </span>
-
-                  <span className="folder-name" title={folder.name}>{folder.name}</span>
-                  {folder.document_count !== undefined && (
-                    <span className="doc-count">
-                      {folder.document_count}
+                  <button
+                    className="folder-row"
+                    onClick={() => toggleFolder(folder)}
+                    type="button"
+                  >
+                    <span className="folder-icon">
+                      {isUnorganized ? "📋" : (isOpen ? "📂" : "📁")}
                     </span>
-                  )}
 
-                  <span className="expand-icon">
-                    {isOpen ? "▾" : "▸"}
-                  </span>
-                </button>
+                    <span className="folder-name" title={folder.name}>{folder.name}</span>
+                    {folder.document_count !== undefined && (
+                      <span className="doc-count">
+                        {folder.document_count}
+                      </span>
+                    )}
+
+                    <span className="expand-icon">
+                      {isOpen ? "▾" : "▸"}
+                    </span>
+                  </button>
+                </div>
 
                 {isOpen && (
                   <div className="folder-documents">

@@ -2328,6 +2328,13 @@ h2 {
   border-color: var(--primary);
 }
 
+.folder-row-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
 .folder-row {
   display: flex;
   align-items: center;
@@ -2338,7 +2345,7 @@ h2 {
   background: transparent;
   color: var(--text);
   font-size: 0.88rem;
-  width: 100%;
+  flex: 1;
   text-align: left;
   cursor: pointer;
   transition: all 120ms ease;
