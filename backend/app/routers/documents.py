@@ -208,6 +208,9 @@ async def view_document(document_id: str):
         absolute_path = resolve_storage_path(stored_path)
         
         # If path doesn't exist and is absolute (old database record), try to find it locally
+        print("STORED PATH:", stored_path)
+        print("RESOLVED PATH:", absolute_path)
+        print("EXISTS:", absolute_path.exists())
         if not absolute_path.exists() and absolute_path.is_absolute():
             # Check uploads
             local_upload_path = UPLOAD_DIR / file_name
