@@ -45,6 +45,7 @@ def get_best_matching_domain(document_embedding):
             document_embedding,
             domain_embedding
         )
+        print(domain["name"],round(similarity, 4))
 
         if similarity > highest_similarity:
             highest_similarity = similarity

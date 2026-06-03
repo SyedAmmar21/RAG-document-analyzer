@@ -219,6 +219,23 @@ def assign_document_to_domain(document_id: str, domain_id: int, confidence: Opti
     created_date = datetime.now(MALAYSIA_TZ).isoformat(timespec="seconds")
 
     cursor.execute(
+        """
+        SELECT domain_id
+        FROM document_domains
+        WHERE document_id = ?
+        """,
+        (document_id,)
+    )
+
+    old_domain_row = cursor.fetchone()
+
+    old_domain_id = (
+        old_domain_row["domain_id"]
+        if old_domain_row
+        else None
+    )
+
+    cursor.execute(
         "DELETE FROM document_domains WHERE document_id = ?",
         (document_id,)
     )
@@ -233,7 +250,9 @@ def assign_document_to_domain(document_id: str, domain_id: int, confidence: Opti
     conn.commit()
     conn.close()
 
-    # Recompute adaptive semantic centroid
+    if old_domain_id:
+        recompute_domain_centroid(old_domain_id)
+
     recompute_domain_centroid(domain_id)
 
     return get_document_domain(document_id)

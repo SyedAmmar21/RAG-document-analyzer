@@ -25,6 +25,9 @@ from app.services.domain_service import (
 from app.services.metadata_service import get_metadata as get_saved_metadata, save_metadata
 from app.services.domain_service import get_documents_by_domain
 
+from app.services.domain_centroid_service import (
+    recompute_domain_centroid
+)
 router = APIRouter()
 
 es = Elasticsearch(
@@ -143,6 +146,29 @@ async def delete_document(document_id: str):
     )
     row = cursor.fetchone()
 
+    cursor.execute(
+        "SELECT file_path FROM documents WHERE id = ?",
+        (document_id,)
+    )
+    row = cursor.fetchone()
+
+    cursor.execute(
+        """
+        SELECT domain_id
+        FROM document_domains
+        WHERE document_id = ?
+        """,
+        (document_id,)
+    )
+
+    domain_row = cursor.fetchone()
+
+    domain_id = (
+        domain_row["domain_id"]
+        if domain_row
+        else None
+    )
+
     if not row:
         conn.close()
         raise HTTPException(status_code=404, detail="Document not found")
@@ -189,6 +215,9 @@ async def delete_document(document_id: str):
         conflicts="proceed",
         refresh=True,
     )
+
+    if domain_id:
+        recompute_domain_centroid(domain_id)
 
     return {"message": "Document deleted successfully"}
 
