@@ -1,8 +1,8 @@
 from email.mime import text
 from multiprocessing import context
 from unittest import result
-
 from langchain.tools import tool
+from deepagents import create_deep_agent
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
@@ -182,6 +182,37 @@ Your job and rules:
 - Use search_documents_tool for general questions and explanations
 - Use summarize_document_tool when the user asks for a summary, overview of the document or explination of whole document
 
+- Always base your answer ONLY on retrieved document content
+- Do NOT hallucinate or guess
+
+If no relevant information is found, clearly say so.
+"""
+    )
+
+    return agent
+
+def get_deep_rag_agent(
+    document_id: str | None = None,
+    document_ids: list[str] | None = None
+):
+    llm = ChatOpenAI(model="gpt-5.4-nano")
+
+    tools = create_tools(
+        llm=llm,
+        document_id=document_id,
+        document_ids=document_ids
+    )
+
+    agent = create_deep_agent(
+        model=llm,
+        tools=tools,
+        system_prompt="""
+You are an intelligent document assistant.
+
+Your job and rules:
+- Understand the user's question carefully
+- Use search_documents_tool for general questions and explanations
+- Use summarize_document_tool when the user asks for a summary
 - Always base your answer ONLY on retrieved document content
 - Do NOT hallucinate or guess
 
