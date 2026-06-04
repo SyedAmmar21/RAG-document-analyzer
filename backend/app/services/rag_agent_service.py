@@ -142,24 +142,97 @@ def create_tools(llm, document_id=None, document_ids=None):
         context = "\n\n".join([result["text"] for result in results])
 
         prompt = f"""
-You are an expert at summarizing documents.
+                You are an expert at summarizing documents.
 
-Provide a clear and concise summary of the following content.
-Focus on the most important points.
+                Provide a clear and concise summary of the following content.
+                Focus on the most important points.
 
-Document:
-{context}
+                Document:
+                {context}
 
-User Request:
-{query}
-"""
+                User Request:
+                {query}
+                """
 
         response = llm.invoke(prompt)
 
         return response.content
+    
+    # 🔹 tool 3
+    @tool
+    def deep_research_tool(query: str):
+        """
+        Perform comprehensive multi-document analysis.
 
+        Use this tool when the user asks for:
+        - comparisons
+        - contradictions
+        - trends
+        - comprehensive reviews
+        - strategic analysis
+        - deep research
+        """
 
-    return [search_documents_tool, summarize_document_tool]
+        print(f"\n===== DEEP RESEARCH =====")
+        print(f"QUERY: {query}")
+
+        # Retrieve much more evidence than normal search
+        results = search_documents(
+            query,
+            document_id=document_id,
+            document_ids=document_ids,
+            top_k=25
+        )
+
+        print(f"RESULTS FOUND: {len(results)}")
+
+        if not results:
+            return "No relevant information found."
+
+        context = """
+    DEEP RESEARCH EVIDENCE
+
+    The following evidence was retrieved across multiple documents.
+
+    Instructions:
+    - Analyze all retrieved evidence.
+    - Compare viewpoints across documents.
+    - Identify agreements and disagreements.
+    - Identify recurring themes.
+    - Highlight contradictions if present.
+    - Discuss implications and risks.
+    - Produce a structured report.
+    """
+
+        seen_documents = set()
+
+        for result in results:
+
+            document_name = result["document_name"]
+
+            # only include each document once
+            if document_name in seen_documents:
+                continue
+
+            seen_documents.add(document_name)
+
+            text = result["text"].strip()
+
+            context += f"""
+
+    ==================================================
+    DOCUMENT: {document_name}
+    ==================================================
+
+    {text[:1500]}
+    """
+
+        print(f"UNIQUE DOCUMENTS USED: {len(seen_documents)}")
+        print("============================\n")
+
+        return context
+
+    return [search_documents_tool, summarize_document_tool, deep_research_tool]
 
 
 
@@ -206,6 +279,7 @@ def get_deep_rag_agent(
     agent = create_deep_agent(
         model=llm,
         tools=tools,
+        skills=["app/skills/comparative_analysis.md"],
         system_prompt="""
 You are an intelligent document assistant.
 
@@ -217,7 +291,8 @@ Your job and rules:
 - Do NOT hallucinate or guess
 
 If no relevant information is found, clearly say so.
-"""
+""",    debug=True
+        
     )
 
     return agent
