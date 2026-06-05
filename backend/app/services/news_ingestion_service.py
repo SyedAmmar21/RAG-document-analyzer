@@ -26,14 +26,14 @@ TRACKING_QUERY_KEYS = {
     "mc_eid",
     "ref",
 }
-GOLD_NEWS_QUERY = (
-    "gold prices today latest news "
-    "Federal Reserve inflation real yields gold"
-    "central bank gold buying "
-    "gold ETF inflows "
-    "gold safe haven geopolitical tensions "
-    "gold mining supply disruption"
-)
+
+# Focused search queries for different gold market drivers
+GOLD_SEARCH_QUERIES = [
+    "gold prices latest today Federal Reserve interest rates",  # Economic factors
+    "central banks buying gold reserves 2024",  # Institutional demand
+    "gold mining production disruption supply",  # Supply issues
+    "geopolitical tensions safe haven gold demand",  # Geopolitical factors
+]
 
 def _get_tavily_client() -> TavilyClient:
     if not TAVILY_API_KEY:
@@ -43,15 +43,55 @@ def _get_tavily_client() -> TavilyClient:
 
 
 def search_gold_news(max_results: int = MAX_NEWS_ARTICLES) -> Dict[str, Any]:
+    """
+    Search for relevant gold news using multiple focused queries.
+    
+    Searches across different gold market drivers:
+    - Economic indicators (Fed, rates, inflation)
+    - Central bank activity
+    - Supply disruptions
+    - Geopolitical factors
+    """
     try:
         client = _get_tavily_client()
-        return client.search(
-            query= GOLD_NEWS_QUERY,
-            topic="news",
-            max_results=max_results,
-            days=1,
-            search_depth="advanced",
-        )
+        all_results = []
+        
+        # Search multiple focused queries for better relevance
+        for query in GOLD_SEARCH_QUERIES:
+            try:
+                response = client.search(
+                    query=query,
+                    topic="news",
+                    max_results=max_results // len(GOLD_SEARCH_QUERIES) + 1,  # Distribute results
+                    days=1,
+                    search_depth="advanced",
+                    include_answer=False,
+                )
+                all_results.extend(response.get("results", []))
+            except Exception as e:
+                logger.warning("Search failed for query '%s': %s", query, str(e))
+                continue
+        
+        # Remove duplicates by URL while preserving order
+        seen_urls = set()
+        unique_results = []
+        for result in all_results:
+            url = result.get("url")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                unique_results.append(result)
+        
+        # Sort by relevance score (if available) and return top results
+        if unique_results:
+            unique_results.sort(
+                key=lambda x: x.get("score", 0),
+                reverse=True
+            )
+        
+        return {
+            "results": unique_results[:max_results],
+            "total_results": len(unique_results),
+        }
     except Exception as error:
         logger.exception("Tavily gold news search failed")
         return {
