@@ -229,12 +229,9 @@ DOCUMENT: {doc_display_name}
 
 
 def create_tools(llm, document_id=None, document_ids=None):
-    # ========================================
+
     # TOOL 1: SEARCH DOCUMENTS
-    # ========================================
-    # Use for: Factual questions, quick lookups, direct evidence retrieval
-    # Encourages: Simple, direct retrieval before complex analysis
-    
+
     @tool
     def search_documents_tool(query: str):
         """
@@ -250,9 +247,9 @@ def create_tools(llm, document_id=None, document_ids=None):
         """
         results = search_documents(query, document_id=document_id, document_ids=document_ids, top_k=8)
         
-        # ========================================
+
         # LOGGING
-        # ========================================
+
         unique_docs = set(r["document_name"] for r in results)
         
         print(f"\n===== SEARCH DOCUMENTS TOOL =====")
@@ -264,9 +261,9 @@ def create_tools(llm, document_id=None, document_ids=None):
         if not results:
             return "No relevant information found."
 
-        # ========================================
+
         # BUILD CLEAN EVIDENCE CONTEXT
-        # ========================================
+
         
         context = "RETRIEVED EVIDENCE\n\n"
         
@@ -298,11 +295,8 @@ def create_tools(llm, document_id=None, document_ids=None):
         return context
 
 
-    # ========================================
+
     # TOOL 2: SUMMARIZE DOCUMENT
-    # ========================================
-    # Use for: Document overviews and high-level summaries
-    # Encourages: Using LLM for synthesis before detailed analysis
     
     @tool
     def summarize_document_tool(query: str):
@@ -319,9 +313,9 @@ def create_tools(llm, document_id=None, document_ids=None):
         # Get more chunks for better summary
         results = search_documents(query, document_id=document_id, document_ids=document_ids, top_k=8)
         
-        # ========================================
+ 
         # LOGGING
-        # ========================================
+
         unique_docs = set(r["document_name"] for r in results)
         
         print(f"\n===== SUMMARIZE DOCUMENT TOOL =====")
@@ -356,11 +350,8 @@ User Request:
 
         return response.content
     
-    # ========================================
+
     # TOOL 3: COMPARE DOCUMENTS
-    # ========================================
-    # Use for: Comparing viewpoints across documents
-    # Encourages: Using specialized tool before synthesis
     
     @tool
     def compare_documents_tool(query: str):
@@ -419,11 +410,8 @@ Always cite sources explicitly for each claim.
         response = llm.invoke(prompt)
         return response.content
     
-    # ========================================
+
     # TOOL 4: IDENTIFY TRENDS
-    # ========================================
-    # Use for: Finding patterns and recurring themes
-    # Encourages: Using specialized tool for pattern analysis
     
     @tool
     def identify_trends_tool(query: str):
@@ -484,11 +472,8 @@ Always cite specific sources and evidence for each pattern identified.
         response = llm.invoke(prompt)
         return response.content
     
-    # ========================================
+
     # TOOL 5: RISK ANALYSIS
-    # ========================================
-    # Use for: Assessing risks, uncertainties, and contradictions
-    # Encourages: Using specialized tool for risk assessment
     
     @tool
     def risk_analysis_tool(query: str):
@@ -548,12 +533,8 @@ Always cite sources and provide evidence for each risk or contradiction identifi
         
         response = llm.invoke(prompt)
         return response.content
-    
-    # ========================================
+
     # TOOL 6: DEEP RESEARCH (SYNTHESIS)
-    # ========================================
-    # Use for: Executive-level synthesis and strategic insights
-    # Encourages: Using this only after gathering specialized analyses
     
     @tool
     def deep_research_tool(query: str, top_k: int = 40):
@@ -723,6 +704,7 @@ def get_deep_rag_agent(
             "app/skills/analytical_review.md",
             "app/skills/comparative_analysis.md"
         ],
+        memory=["app/memory/research_history.md"],
         system_prompt="""
 You are an expert document analyst and strategic research agent.
 
