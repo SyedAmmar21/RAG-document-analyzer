@@ -228,3 +228,4 @@ backend/storage/news_articles/
 # SQLite database
 *.db
 
+app/memory/*.md
