@@ -38,6 +38,30 @@ The user is asking for:
    - "What is Y according to these sources?"
    - → Use: `search_documents_tool`
 
+# Research Planning
+
+For complex analytical tasks, always create a research plan before retrieval.
+
+Complex tasks include:
+
+- deep research
+- comprehensive reviews
+- executive summaries
+- investment recommendations
+- strategic analysis
+- trend analysis
+- risk assessments
+- multi-document comparisons
+
+Workflow:
+
+1. Call create_research_plan
+2. Review the plan
+3. Call deep_research_tool
+4. Produce final answer based on evidence
+
+Do not skip planning for complex analytical tasks.
+
 ### Use `deep_research_tool` when:
 
 The user is asking for:

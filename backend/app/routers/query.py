@@ -97,40 +97,57 @@ async def query_agent(request: QueryRequest):
             document_id=request.document_id
         )
 
-    # Run agent
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": request.query
-                }
-            ]
-        },
+    # Run agent with error handling
+    try:
+        response = agent.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": request.query
+                    }
+                ]
+            },
 
-        config={
-            "recursion_limit": 10
+            config={
+                # Recursion limit for multi-step planning with specialized tools.
+                # Each tool call + reasoning step counts as 1 recursion iteration.
+                "recursion_limit": 25
+            }
+        )
+
+        # Extract answer only after successful invoke
+        answer = response["messages"][-1].content
+
+        print("\n===== AGENT RESPONSE DEBUG =====")
+        print(f"Model: {response['messages'][-1].response_metadata.get('model_name', 'unknown')}")
+        print(f"Total messages: {len(response['messages'])}")
+        print(f"Answer preview: {answer[:200]}...")
+        print("================================\n")
+
+        #  SAVE AI RESPONSE INTO DB
+        add_ai_response(
+            document_id=request.document_id,
+            query=request.query,
+            response=answer
+        )
+        
+        # Return response
+        return {
+            "answer": answer
         }
-    )
-
-    print("\n===== AGENT RESPONSE DEBUG =====")
-    print(response)
-    print("================================\n")
-
-    # Extract answer
-    answer = response["messages"][-1].content
-
-    #  SAVE AI RESPONSE INTO DB
-    add_ai_response(
-        document_id=request.document_id,
-        query=request.query,
-        response=answer
-    )
     
-    # Return response
-    return {
-        "answer": answer
-    }
+    except Exception as e:
+        # Handle any agent errors (GraphRecursionError, LLM errors, etc.)
+        error_message = f"Agent failed: {str(e)}"
+        print(f"\n===== AGENT ERROR =====")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        print("=====================\n")
+        
+        return {
+            "answer": error_message
+        }
 
 
 @router.post("/field-search")
@@ -163,36 +180,54 @@ Rules:
 - Keep the response concise and structured.
 """
 
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": request.query
-                }
-            ]
-        },
+    # Run agent with error handling
+    try:
+        response = agent.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            },
 
-        config={
-            "recursion_limit": 10
+            config={
+                # Recursion limit for multi-step planning with specialized tools.
+                "recursion_limit": 25
+            }
+        )
+
+        # Extract answer only after successful invoke
+        answer = response["messages"][-1].content
+
+        print("\n===== AGENT RESPONSE DEBUG =====")
+        print(f"Model: {response['messages'][-1].response_metadata.get('model_name', 'unknown')}")
+        print(f"Total messages: {len(response['messages'])}")
+        print(f"Answer preview: {answer[:200]}...")
+        print("================================\n")
+
+        add_ai_response(
+            document_id=request.document_id,
+            query=f"Field search: {', '.join(fields)}",
+            response=answer
+        )
+
+        return {
+            "answer": answer
         }
-    )
-
-    print("\n===== AGENT RESPONSE DEBUG =====")
-    print(response)
-    print("================================\n")
-
-    answer = response["messages"][-1].content
-
-    add_ai_response(
-        document_id=request.document_id,
-        query=f"Field search: {', '.join(fields)}",
-        response=answer
-    )
-
-    return {
-        "answer": answer
-    }
+    
+    except Exception as e:
+        # Handle any agent errors (GraphRecursionError, LLM errors, etc.)
+        error_message = f"Agent failed: {str(e)}"
+        print(f"\n===== AGENT ERROR =====")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        print("=====================\n")
+        
+        return {
+            "answer": error_message
+        }
 
 @router.get("/test-news")
 def test_news():
