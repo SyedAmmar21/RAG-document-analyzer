@@ -32,6 +32,7 @@ services:
     volumes:
       - ./backend/storage:/app/storage
       - ./backend/app/db:/app/app/db
+      - ./backend/app/memory:/app/app/memory
 
     depends_on:
       elasticsearch:

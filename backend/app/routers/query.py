@@ -9,6 +9,10 @@ from app.services.domain_service import get_documents_by_domain
 from app.services.news_ingestion_service import search_gold_news
 from app.services.news_ingestion_service import extract_article_text
 from app.services.news_ingestion_service import save_article_as_txt
+from app.services.memory_service import (
+    create_memory_entry,
+    save_memory_entry
+)
 
 router = APIRouter()
 
@@ -131,7 +135,24 @@ async def query_agent(request: QueryRequest):
             query=request.query,
             response=answer
         )
-        
+        # SAVE RESEARCH MEMORY
+
+        try:
+            memory_entry = create_memory_entry(
+                query=request.query,
+                answer=answer
+            )
+
+            save_memory_entry(memory_entry)
+
+            print("Memory saved successfully.")
+
+        except Exception as memory_error:
+            print(
+                f"Memory save failed: {memory_error}"
+            )
+
+            
         # Return response
         return {
             "answer": answer
