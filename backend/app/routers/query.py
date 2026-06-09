@@ -2,7 +2,7 @@ from urllib import request
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-from app.services.rag_agent_service import get_rag_agent
+from app.services.rag_agent_service import get_deep_rag_agent
 from app.services.document_service import add_ai_response
 from app.services.domain_service import get_documents_by_domain
 
@@ -40,7 +40,7 @@ class FieldSearchRequest(BaseModel):
 async def query_agent(request: QueryRequest):
     # GLOBAL mode
     if request.scope_type == "global":
-        agent = get_rag_agent()
+        agent = get_deep_rag_agent()
 
     # FOLDER mode
     elif request.scope_type == "folders":
@@ -81,56 +81,73 @@ async def query_agent(request: QueryRequest):
                 print("FOLDER ERROR:", e)
 
 
-        agent = get_rag_agent(
+        agent = get_deep_rag_agent(
             document_ids=all_document_ids
         )
 
     # DOCUMENT mode
     elif request.scope_type == "documents":
-        agent = get_rag_agent(
+        agent = get_deep_rag_agent(
             document_ids=request.document_ids
         )
 
     # FALLBACK single-document compatibility
     else:
-        agent = get_rag_agent(
+        agent = get_deep_rag_agent(
             document_id=request.document_id
         )
 
-    # Run agent
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": request.query
-                }
-            ]
-        },
+    # Run agent with error handling
+    try:
+        response = agent.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": request.query
+                    }
+                ]
+            },
 
-        config={
-            "recursion_limit": 10
+            config={
+                # Recursion limit for multi-step planning with specialized tools.
+                # Each tool call + reasoning step counts as 1 recursion iteration.
+                "recursion_limit": 25
+            }
+        )
+
+        # Extract answer only after successful invoke
+        answer = response["messages"][-1].content
+
+        print("\n===== AGENT RESPONSE DEBUG =====")
+        print(f"Model: {response['messages'][-1].response_metadata.get('model_name', 'unknown')}")
+        print(f"Total messages: {len(response['messages'])}")
+        print(f"Answer preview: {answer[:200]}...")
+        print("================================\n")
+
+        #  SAVE AI RESPONSE INTO DB
+        add_ai_response(
+            document_id=request.document_id,
+            query=request.query,
+            response=answer
+        )
+        
+        # Return response
+        return {
+            "answer": answer
         }
-    )
-
-    print("\n===== AGENT RESPONSE DEBUG =====")
-    print(response)
-    print("================================\n")
-
-    # Extract answer
-    answer = response["messages"][-1].content
-
-    #  SAVE AI RESPONSE INTO DB
-    add_ai_response(
-        document_id=request.document_id,
-        query=request.query,
-        response=answer
-    )
     
-    # Return response
-    return {
-        "answer": answer
-    }
+    except Exception as e:
+        # Handle any agent errors (GraphRecursionError, LLM errors, etc.)
+        error_message = f"Agent failed: {str(e)}"
+        print(f"\n===== AGENT ERROR =====")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        print("=====================\n")
+        
+        return {
+            "answer": error_message
+        }
 
 
 @router.post("/field-search")
@@ -142,7 +159,7 @@ async def field_search(request: FieldSearchRequest):
             "answer": "Add at least one field or search key to extract from the document."
         }
 
-    agent = get_rag_agent(request.document_id)
+    agent = get_deep_rag_agent(request.document_id)
     fields_text = "\n".join(f"- {field}" for field in fields)
 
     prompt = f"""
@@ -163,36 +180,54 @@ Rules:
 - Keep the response concise and structured.
 """
 
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": request.query
-                }
-            ]
-        },
+    # Run agent with error handling
+    try:
+        response = agent.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            },
 
-        config={
-            "recursion_limit": 10
+            config={
+                # Recursion limit for multi-step planning with specialized tools.
+                "recursion_limit": 25
+            }
+        )
+
+        # Extract answer only after successful invoke
+        answer = response["messages"][-1].content
+
+        print("\n===== AGENT RESPONSE DEBUG =====")
+        print(f"Model: {response['messages'][-1].response_metadata.get('model_name', 'unknown')}")
+        print(f"Total messages: {len(response['messages'])}")
+        print(f"Answer preview: {answer[:200]}...")
+        print("================================\n")
+
+        add_ai_response(
+            document_id=request.document_id,
+            query=f"Field search: {', '.join(fields)}",
+            response=answer
+        )
+
+        return {
+            "answer": answer
         }
-    )
-
-    print("\n===== AGENT RESPONSE DEBUG =====")
-    print(response)
-    print("================================\n")
-
-    answer = response["messages"][-1].content
-
-    add_ai_response(
-        document_id=request.document_id,
-        query=f"Field search: {', '.join(fields)}",
-        response=answer
-    )
-
-    return {
-        "answer": answer
-    }
+    
+    except Exception as e:
+        # Handle any agent errors (GraphRecursionError, LLM errors, etc.)
+        error_message = f"Agent failed: {str(e)}"
+        print(f"\n===== AGENT ERROR =====")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        print("=====================\n")
+        
+        return {
+            "answer": error_message
+        }
 
 @router.get("/test-news")
 def test_news():
