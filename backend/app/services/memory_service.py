@@ -11,12 +11,58 @@ def create_memory_entry(
     answer: str
 ):
     """
-    Convert a long research report into a concise memory entry.
+    Determine whether a research result deserves long-term memory.
+    If yes, create a compact memory entry.
+    If not, return None.
     """
 
     llm = ChatOpenAI(model="gpt-5.4-nano")
 
-    prompt = f"""
+    evaluation_prompt = f"""
+You are deciding whether a research result deserves long-term memory.
+
+SAVE only if the result contains:
+- strategic analysis
+- trends
+- comparisons
+- risks
+- investment insights
+- executive conclusions
+- important findings that may be useful later
+
+DO NOT SAVE:
+- simple factual lookups
+- basic summaries
+- short Q&A
+- document navigation questions
+- trivial information
+
+Respond ONLY:
+
+YES
+
+or
+
+NO
+
+Question:
+{query}
+
+Answer:
+{answer}
+"""
+
+    evaluation = llm.invoke(
+        evaluation_prompt
+    ).content.strip().upper()
+
+    if evaluation != "YES":
+        print("Memory skipped: not important enough.")
+        return None
+
+    print("Memory approved for storage.")
+
+    summary_prompt = f"""
 You are creating long-term research memory.
 
 Summarize the research below into a compact memory entry.
@@ -38,10 +84,11 @@ Research Output:
 {answer}
 """
 
-    response = llm.invoke(prompt)
+    memory_entry = llm.invoke(
+        summary_prompt
+    ).content
 
-    return response.content
-
+    return memory_entry
 
 def save_memory_entry(memory_entry: str):
     print("MEMORY FILE:", MEMORY_FILE.resolve())

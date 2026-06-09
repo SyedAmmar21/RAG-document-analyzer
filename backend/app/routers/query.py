@@ -143,16 +143,16 @@ async def query_agent(request: QueryRequest):
                 answer=answer
             )
 
-            save_memory_entry(memory_entry)
-
-            print("Memory saved successfully.")
+            if memory_entry:
+                save_memory_entry(memory_entry)
+                print("Memory saved successfully.") 
 
         except Exception as memory_error:
             print(
                 f"Memory save failed: {memory_error}"
             )
 
-            
+
         # Return response
         return {
             "answer": answer
