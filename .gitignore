@@ -228,3 +228,6 @@ backend/storage/news_articles/
 # SQLite database
 *.db
 
+# Memory files
+backend/app/memory/*.md
+!backend/app/memory/research_history_template.md
