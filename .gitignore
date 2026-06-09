@@ -229,4 +229,5 @@ backend/storage/news_articles/
 *.db
 
 # Memory files
-app/memory/research_history.md
+backend/app/memory/*.md
+!backend/app/memory/research_history_template.md
