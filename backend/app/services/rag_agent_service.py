@@ -9,6 +9,7 @@ import re
 from collections import defaultdict
 
 from app.services.retrieval_service import search_documents
+from app.services.memory_retrieval_service import get_memory_content
 
 
 # ========================================
@@ -617,6 +618,34 @@ Avoid:
 
         return response.content
 
+    # TOOL 7: RESEARCH MEMORY
+
+    @tool
+    def research_memory_tool(query: str):
+        """
+        Search previous research findings stored in long-term memory.
+
+        Use this tool when the user asks:
+        - what was concluded previously
+        - previous research
+        - historical findings
+        - remembered insights
+        - prior analyses
+        """
+
+        memory = get_memory_content()
+
+        if not memory.strip():
+            return "No research memory available."
+
+        return f"""
+PREVIOUS RESEARCH MEMORY
+
+The following information comes from prior completed research analyses.
+
+{memory}
+"""
+
     # Return all tools for the agent
     return [
         search_documents_tool,
@@ -624,7 +653,8 @@ Avoid:
         compare_documents_tool,
         identify_trends_tool,
         risk_analysis_tool,
-        deep_research_tool
+        deep_research_tool,
+        research_memory_tool
     ]
 
 
@@ -733,6 +763,11 @@ SYNTHESIS:
   strategic reviews, investment analysis, or multi-step investigations after 
   you've gathered specialized analyses.
 
+MEMORY:
+- research_memory_tool: Use when the user asks about previous research,
+  remembered insights, prior analyses, historical findings, or what was
+  concluded before.
+
 ========================================
 MULTI-STEP REASONING FOR COMPLEX QUESTIONS
 ========================================
@@ -747,6 +782,8 @@ For analytical questions, use a systematic approach:
 2. GATHER: Retrieve relevant evidence
    - Use search_documents_tool or summarize_document_tool first
    - Get context before specializing
+   - Use research_memory_tool if the user asks about prior conclusions or
+     remembered research
 
 3. ANALYZE (pick which tools based on question):
    - Comparing viewpoints? → Use compare_documents_tool
