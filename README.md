@@ -1,11 +1,11 @@
-# 📄 Adaptive Domain-Aware RAG Platform
+# Adaptive Domain-Aware RAG Platform
 
-> An enterprise-grade intelligent document management system combining adaptive semantic domains, hybrid embeddings, automated news ingestion, and AI-powered knowledge reasoning.
+> A full-stack intelligent document research system with adaptive semantic domains, hybrid embeddings, automated news ingestion, and a Deep Agent that can use skills, tools, and long-term research memory.
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136+-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.x-005571?style=flat-square&logo=elasticsearch)](https://www.elastic.co)
-[![LangChain](https://img.shields.io/badge/LangChain-Agent_Framework-blue?style=flat-square)](https://www.langchain.com)
+[![DeepAgents](https://img.shields.io/badge/DeepAgents-Agent_Framework-blue?style=flat-square)](https://github.com/langchain-ai/deepagents)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT_&_Embeddings-412991?style=flat-square&logo=openai)](https://openai.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python)](https://python.org)
 
@@ -13,580 +13,385 @@
 
 # Overview
 
-This is an enterprise-level Retrieval-Augmented Generation (RAG) platform that reimagines semantic knowledge management through adaptive domain learning. Rather than static document organization, the system continuously learns and refines semantic domain understanding as documents are ingested and processed.
+This project is an adaptive Retrieval-Augmented Generation (RAG) platform for document and news-based research. It combines:
 
-The platform automatically:
-- Ingests and processes documents and online news
-- Extracts rich structured metadata using LLMs
-- Generates hybrid semantic embeddings
-- Organizes documents into adaptive, evolving domains
-- Performs intelligent multi-document retrieval
-- Enables grounded, evidence-based AI conversations
+- Document ingestion and text extraction
+- LLM-powered metadata extraction
+- Hybrid semantic embeddings
+- Elasticsearch vector retrieval
+- Adaptive domain assignment through learned centroids
+- A Deep Agent for multi-step research and reasoning
+- Skill-guided tool selection
+- Long-term research memory for important findings
 
-**Core Differentiators:**
-- Adaptive domain centroids that evolve with document ingestion
-- Hybrid embedding architecture combining metadata and content signals
-- Domain-aware retrieval using cosine similarity matching
-- Automated news pipeline with Tavily integration
-- Multi-document reasoning with source attribution
+Instead of treating the assistant as a simple one-shot RAG chatbot, the current system uses a Deep Agent that can plan, choose specialized tools, analyze evidence from different angles, synthesize findings, and store useful research summaries for later context.
 
 ---
 
 # Key Features
 
-## 🚀 Intelligent Document Ingestion
+## Intelligent Document Ingestion
 
-Comprehensive support for multiple document formats:
-- **Formats:** PDF, DOCX, TXT, Markdown
-- **Pipeline:** Text extraction → Metadata extraction → Semantic embedding → Hybrid encoding → Elasticsearch indexing → Adaptive domain assignment
-- **Metadata Enrichment:** Automatic extraction of titles, keywords, entities, publication dates, and semantic context
+Supported formats:
 
-## 📡 Automated News Ingestion Pipeline
+- PDF
+- DOCX
+- TXT
+- Markdown
 
-Integrates Tavily for real-time knowledge base expansion:
-1. **News Retrieval:** Tavily searches and retrieves latest relevant articles
-2. **Content Processing:** Article text and metadata extraction
-3. **Semantic Enhancement:** Hybrid embedding generation
-4. **Domain Classification:** Intelligent matching against adaptive domain centroids
-5. **Automatic Indexing:** Articles are indexed and assigned to appropriate domains
+Ingestion flow:
 
-This enables the knowledge base to evolve dynamically with external information sources.
-
-## 🧠 AI-Powered Metadata Extraction
-
-Intelligent extraction of structured information:
-- Titles and focus areas
-- Keywords and topics
-- Named entities and regions
-- Economic indicators and metrics
-- Publication metadata
-- Contextual summaries
-
-Metadata drives downstream:
-- Semantic routing decisions
-- Retrieval precision
-- Domain classification accuracy
-- Evidence grounding
-
-## 🔍 Semantic Search & Retrieval
-
-Multi-faceted retrieval capabilities powered by:
-- Elasticsearch vector search
-- OpenAI embeddings (text-embedding-3)
-- Cosine similarity scoring
-- Metadata-aware filtering
-
-Supports:
-- Domain-scoped retrieval
-- Global semantic querying
-- Multi-document evidence collection
-- Cross-domain relationship discovery
-
----
-
----
-
-# Hybrid Embedding Architecture
-
-A core innovation that improves semantic understanding and classification accuracy.
-
-Instead of relying solely on document embeddings, the platform combines multiple semantic signals:
-
-```python
-hybrid_embedding = (metadata_embedding × 0.7) + (chunk_centroid_embedding × 0.3)
+```text
+Upload
+  -> Text extraction
+  -> Metadata extraction
+  -> Chunking
+  -> Hybrid embedding generation
+  -> Elasticsearch indexing
+  -> Adaptive domain assignment
+  -> Domain centroid update
 ```
 
-**Benefits:**
-- **Richer Context:** Metadata contributes semantic signals about document focus
-- **Improved Clustering:** Better semantic grouping within domains
-- **Accurate Classification:** More precise domain assignment decisions
-- **Enhanced Retrieval:** Higher relevance matching during queries
+The metadata extraction pipeline identifies titles, keywords, entities, regions, publication details, and contextual summaries. These fields improve retrieval precision and domain classification.
 
-This weighted combination ensures both document content and structured metadata inform all downstream semantic operations.
+## Automated News Ingestion
 
----
+The backend integrates Tavily for external news retrieval. News articles are fetched, extracted, saved as text, embedded, indexed, and assigned to domains using the same semantic pipeline as uploaded documents.
 
-# Adaptive Domain Centroid System
+This allows the knowledge base to expand from both user-uploaded files and fresh external sources.
 
-**Domains are not static containers—they are adaptive semantic entities that continuously evolve.**
+## Hybrid Embedding Architecture
 
-## Semantic Foundation
+The platform combines metadata meaning with document content meaning:
 
-Each domain begins with a semantic embedding generated from:
-- Domain name
-- Domain description
+```python
+hybrid_embedding = (metadata_embedding * 0.7) + (chunk_centroid_embedding * 0.3)
+```
 
-This provides an initial semantic anchor even when the domain contains no documents.
+This gives each document a richer semantic representation than content-only chunk embeddings. The hybrid embedding is used for classification, retrieval, and domain centroid updates.
 
-## Dynamic Centroid Evolution
+## Adaptive Domain Centroids
 
-As documents are assigned to a domain, the centroid is computed as:
+Domains are adaptive semantic entities rather than static folders.
+
+Each domain starts with an embedding from its name and description. As documents are assigned, the domain centroid is recomputed from the assigned documents:
 
 ```python
 domain_centroid = average(all_hybrid_embeddings_in_domain)
 ```
 
-This evolving centroid creates a **learned semantic representation** of the domain based on actual assigned content.
-
-## Centroid Recomputation Triggers
-
-Domain centroids are automatically recomputed when:
-
-1. **Documents Added:** New documents increase the semantic representation
-2. **Documents Deleted:** Removal adjusts the semantic center
-3. **Documents Reassigned:** Moving documents between domains updates both source and target domain centroids
-
-## Fallback to Semantic Foundation
-
-If a domain contains no documents:
-- The system falls back to the domain's original semantic embedding
-- This preserves domain identity and enables retrieval even with empty domains
-- As documents are added, the domain transitions to its learned centroid
-
-## Impact on System Behavior
-
-This adaptive approach creates:
-- **Self-Improving Classification:** Domains become better classifiers as more documents are added
-- **Semantic Learning:** The system learns "what this domain is about" through assigned documents
-- **Dynamic Domain Discovery:** New semantic relationships emerge as the knowledge base grows
-- **Robust Empty-Domain Handling:** Placeholder domains maintain semantic meaning until populated
+This lets domains learn from the content they contain. Empty domains fall back to their original name/description embedding, while populated domains evolve around the actual documents assigned to them.
 
 ---
 
----
+# Deep Agent Architecture
 
-# Adaptive Domain-Aware RAG Platform
+The current query system uses `deepagents.create_deep_agent` through `backend/app/services/rag_agent_service.py`.
 
-Unlike traditional ReAct-style agents, this system implements an **adaptive retrieval-reasoning architecture** that treats domain understanding as a learned, evolving component.
+The Deep Agent is designed for multi-step analytical research. It can:
 
-## System Approach
+- Retrieve direct evidence
+- Summarize relevant documents
+- Compare perspectives across documents
+- Identify trends and recurring themes
+- Assess risks, contradictions, uncertainty, and confidence
+- Synthesize evidence into executive-level conclusions
+- Save important research findings into memory
 
-Rather than purely agentic reasoning with tool use, the platform combines:
-- **Domain-Aware Retrieval:** Intelligent routing using adaptive centroids
-- **Hybrid Semantic Search:** Multi-signal ranking for precision
-- **Grounded Reasoning:** LLM processing with explicit evidence grounding
-- **Adaptive Learning:** Continuous refinement through document assignment
+The `/query` endpoint creates the Deep Agent for every user query and scopes retrieval based on the frontend request:
 
-## Core Capabilities
+- `global`: search across the whole indexed knowledge base
+- `folders`: resolve selected domain/folder IDs into document IDs
+- `documents`: search only selected documents
+- legacy `document_id`: fallback support for older single-document calls
 
-The system can:
-- **Retrieve Evidence:** Multi-document retrieval using domain-aware similarity
-- **Compare Sources:** Analyze relationships between retrieved documents
-- **Detect Contradictions:** Identify conflicting information across sources
-- **Summarize Findings:** Synthesize evidence into coherent narratives
-- **Generate Grounded Responses:** Produce answers with explicit source attribution
+## Deep Agent Skills
 
-## Reasoning Design
+The agent is configured with three local skill files:
 
-Response generation is optimized to:
-- Reduce hallucination through explicit evidence requirements
-- Encourage analytical reasoning across multiple sources
-- Force source attribution for all claims
-- Support transparency in AI decision-making
-- Enable auditable knowledge lineage
+| Skill | File | Purpose |
+|------|------|---------|
+| Retrieval Strategy | `backend/app/skills/retrieval_strategy.md` | Teaches the agent when to use quick search versus deep research and how to combine tools. |
+| Analytical Review | `backend/app/skills/analytical_review.md` | Guides structured, evidence-based analysis across documents. |
+| Comparative Analysis | `backend/app/skills/comparative_analysis.md` | Helps compare viewpoints, agreements, disagreements, and source perspectives. |
 
----
+These skills act as reusable reasoning instructions. They help the Deep Agent decide which tools to call, when to plan, and how to structure analytical answers.
 
-# Agent Architecture
+## Deep Agent Tools
 
-## User Query Flow
+The agent currently has six specialized tools:
 
-```
-User Query
-    ↓
-Query Embedding Generation
-    ↓
-Domain Relevance Scoring
-    ↓
-Adaptive Domain Centroid Comparison
-    ↓
-Top Domains Selected
-```
+| Tool | Purpose |
+|------|---------|
+| `search_documents_tool` | Fast Elasticsearch retrieval for factual questions, lookups, and direct evidence. |
+| `summarize_document_tool` | Summarizes relevant retrieved content for overviews and document summaries. |
+| `compare_documents_tool` | Compares documents, viewpoints, forecasts, agreements, disagreements, and unique perspectives. |
+| `identify_trends_tool` | Finds recurring themes, patterns, emerging signals, and trend evidence across documents. |
+| `risk_analysis_tool` | Identifies risks, uncertainty, contradictions, evidence gaps, and confidence signals. |
+| `deep_research_tool` | Synthesizes evidence into executive-level conclusions, implications, opportunities, and recommendations. |
 
-User queries are embedded and compared against all adaptive domain centroids. The system identifies which domains contain semantically relevant information, enabling domain-scoped or global retrieval strategies.
+For simple factual questions, the agent can call `search_documents_tool` directly. For complex questions, it can use several tools in sequence before producing a final synthesis.
 
-## Retrieval Flow
+## Deep Agent Memory
 
-```
-Selected Domains
-    ↓
-Elasticsearch Vector Search
-    ↓
-Hybrid Embedding Matching
-    ↓
-Metadata Filtering
-    ↓
-Evidence Ranking by Similarity
-    ↓
-Retrieved Context Window
+The agent is connected to long-term research memory:
+
+```text
+backend/app/memory/research_history.md
 ```
 
-Multi-document retrieval prioritizes both semantic relevance and metadata-based filtering. Retrieved documents are ranked by cosine similarity to the query embedding.
+After a query finishes, `backend/app/services/memory_service.py` evaluates whether the answer deserves long-term storage. It saves only important research outputs such as:
 
-## LLM Reasoning Flow
+- Strategic analysis
+- Trends
+- Comparisons
+- Risks
+- Investment insights
+- Executive conclusions
+- Important findings that may be useful later
 
-```
-Retrieved Context + Query
-    ↓
-Evidence Analysis
-    ↓
-Source Comparison
-    ↓
-Contradiction Detection
-    ↓
-Synthesis & Reasoning
-    ↓
-Grounded Response Generation
-    ↓
-Attribution & Sourcing
-```
+Simple lookups, short Q&A, trivial summaries, and navigation-style questions are skipped.
 
-The LLM receives retrieved context and performs structured reasoning with explicit source references. All claims are traced back to original documents.
+When memory is saved, it is compacted into a short entry containing the topic, key findings, risks, confidence level, and final conclusion. Docker Compose mounts `backend/app/memory` as a persistent volume path so research history survives backend container restarts.
 
-## Domain-Aware Retrieval
+## Query Reasoning Flow
 
-**Key Innovation:** The system uses adaptive domain centroids to intelligently route queries:
-
-- **Centroid Matching:** Query embeddings are compared against domain centroids
-- **Domain Ranking:** Domains are ranked by cosine similarity
-- **Scoped Retrieval:** Retrieved results are prioritized from high-matching domains
-- **Cross-Domain Context:** Global queries can retrieve from multiple domains
-- **Adaptive Precision:** As domains evolve, retrieval becomes more accurate
-
-```python
-domain_relevance = cosine_similarity(query_embedding, domain_centroid)
-retrieved_documents = elasticsearch_search(
-    query=query,
-    filters={"domain": top_matching_domains},
-    hybrid_embeddings=True
-)
+```text
+User query
+  -> Frontend sends scope and query to /query
+  -> Backend creates scoped Deep Agent
+  -> Agent reads skills and memory
+  -> Agent selects tools based on intent
+  -> Retrieval tools query Elasticsearch
+  -> Specialized tools analyze evidence
+  -> Deep research tool synthesizes findings when needed
+  -> Final answer is returned with source-grounded reasoning
+  -> Important research outputs are saved to memory
 ```
 
-## Evidence Grounding
-
-Every response component includes:
-- **Source Documents:** References to specific retrieved documents
-- **Metadata Context:** Relevant metadata supporting the answer
-- **Chunk Citations:** Specific text snippets backing claims
-- **Confidence Indicators:** Relevance scores for retrieved evidence
-- **Domain Attribution:** Which domains contributed the evidence
-
-This ensures responses are fully transparent and auditable.
+The agent is instructed to base conclusions only on retrieved evidence, cite sources explicitly, acknowledge uncertainty, and avoid speculation beyond the documents.
 
 ---
 
----
+# Retrieval And Evidence Grounding
 
-# Technical Innovations
+Retrieval is powered by Elasticsearch and OpenAI embeddings. User queries are embedded, matched against indexed document chunks, and filtered by the selected query scope.
 
-This platform introduces several technical advancements beyond traditional RAG systems:
+Evidence is cleaned and grouped before analysis:
 
-## 🎯 Hybrid Embeddings
-Combines metadata semantics (70%) and chunk content (30%) for richer representation and more accurate classification than content-only embeddings alone.
+- Duplicate chunks are removed
+- Boilerplate text is filtered
+- Results are grouped by document
+- Top chunks per document are retained
+- Source document names are preserved for attribution
 
-## 📊 Adaptive Domain Centroids
-Domains learn and evolve through accumulated documents rather than remaining static. Centroids serve as semantic anchors that improve with each new assignment.
-
-## 🎪 Domain-Aware Classification
-Intelligent routing combines semantic similarity scoring with metadata-based filtering for precise domain assignment and multi-document retrieval.
-
-## 📰 Automated News Expansion
-Tavily integration enables continuous knowledge base growth through automated retrieval, processing, and domain-aware ingestion of external news content.
-
-## 🔗 Multi-Document Reasoning
-Rather than isolated Q&A, the system performs structured reasoning across multiple retrieved documents with explicit source attribution and contradiction detection.
+Every analytical answer is expected to include source attribution, confidence notes, and limitations when evidence is incomplete.
 
 ---
 
 # Frontend Features
 
-Built with React + Vite.
+The frontend is built with React and Vite.
 
-Includes:
+Current UI capabilities include:
+
 - AI chat interface
+- Global, folder/domain, and document-scoped querying
 - Domain/folder navigation
-- Upload modal
+- Document upload modal
 - Metadata editor
-- Markdown AI rendering
+- Markdown response rendering
 - Multi-document querying
-- Repository management UI
-
----
-
-# Document Lifecycle
-
-The journey of a document through the system:
-
-```
-Upload (or News Retrieval)
-    ↓
-Text Extraction
-    ↓
-AI Metadata Extraction (title, keywords, entities, etc.)
-    ↓
-Chunking & Tokenization
-    ↓
-Hybrid Embedding Generation (metadata + content)
-    ↓
-Elasticsearch Indexing
-    ↓
-Domain Similarity Scoring
-    ↓
-Adaptive Domain Assignment (highest cosine similarity)
-    ↓
-Domain Centroid Update (average of all domain embeddings)
-    ↓
-Available for Semantic Retrieval
-```
-
-Each stage in this pipeline adds semantic richness and organizational context to the document.
-
----
-
-# Domain Learning Mechanism
-
-**Domains continuously learn and improve through document assignment.**
-
-## Learning Process
-
-1. **Initial State:** Domain begins with semantic embedding from name + description
-2. **Document Assignment:** Documents are assigned based on highest similarity to domain centroid
-3. **Centroid Evolution:** New document embedding is averaged into domain centroid
-4. **Semantic Refinement:** Domain's semantic center shifts toward assigned document cluster
-5. **Improved Classification:** Future documents are compared against this refined centroid
-6. **Adaptive Precision:** Classification accuracy increases as domain matures
-
-## Virtuous Cycle
-
-```
-More Documents Assigned
-    ↓
-More Refined Domain Centroid
-    ↓
-More Accurate Domain Boundary
-    ↓
-Better Subsequent Assignments
-    ↓
-Stronger Domain Identity
-```
-
-This creates a **self-reinforcing learning system** where each assignment improves the domain's ability to correctly classify future documents.
-
-## Multi-Domain Dynamics
-
-- Domains that receive similar documents converge toward shared semantic space
-- Domains that receive diverse documents develop broader semantic understanding
-- Document reassignment between domains provides explicit feedback signals
-- The system discovers emergent relationships between domains through centroid analysis
+- Document repository management
+- Latest gold news ingestion trigger
 
 ---
 
 # System Architecture
 
-## High-Level Architecture Diagram
+```text
+Frontend: React + Vite
+  -> Chat UI
+  -> Upload and metadata modals
+  -> Domain/folder navigation
+  -> Document repository
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                    Frontend Layer (React + Vite)                     │
-│         Chat UI  ·  Upload  ·  Domains  ·  Metadata  ·  Repo         │
-└────────────────────────────────┬─────────────────────────────────────┘
-                                  │
-                    ┌─────────────▼──────────────┐
-                    │                            │
-         ┌──────────▼──────────┐      ┌──────────▼─────────┐
-         │   FastAPI Backend   │      │   Tavily API       │
-         │   (RAG Agent)       │      │  (News Retrieval)  │
-         │                     │      │                    │
-         │  • Ingestion        │      └────────────────────┘
-         │  • Retrieval        │
-         │  • Reasoning        │      ┌────────────────────┐
-         │  • Domain Logic     │      │  OpenAI APIs       │
-         │                     │      │  • Embeddings      │
-         └──────────┬──────────┘      │  • GPT Models      │
-                    │                 └────────────────────┘
-         ┌──────────┼──────────┐
-         │          │          │
-    ┌────▼──┐   ┌───▼────┐ ┌──▼───────┐
-    │ SQLite│   │Elastic │ │ Domain   │
-    │Metadata   │Search  │ │ Similarity
-    │ Store     │Vector  │ │ Layer &  │
-    │           │Engine  │ │Centroids │
-    └────────┘  └────────┘ └──────────┘
+Backend: FastAPI
+  -> Routers for ingestion, query, news, and documents
+  -> Deep Agent service
+  -> Retrieval service
+  -> Memory service
+  -> Metadata and extraction services
+  -> Domain assignment and centroid services
+  -> Elasticsearch vector service
+
+Storage:
+  -> SQLite metadata database
+  -> Elasticsearch dense vector index
+  -> Uploaded files and downloaded news articles
+  -> Research memory Markdown file
+
+External APIs:
+  -> OpenAI for LLM and embeddings
+  -> Tavily for news retrieval
 ```
 
-## Component Details
-
-### Ingestion Pipeline
-- **Input:** Documents (PDF, DOCX, TXT, MD) or News articles
-- **Processing:** Text extraction → Metadata extraction → Embedding generation
-- **Output:** Indexed documents in Elasticsearch with domain assignment
-
-### Domain-Aware Retrieval Layer
-- **Query Analysis:** Embed user query
-- **Domain Scoring:** Compute similarity to all domain centroids
-- **Retrieval Routing:** Retrieve from high-relevance domains
-- **Result Ranking:** Rank by hybrid embedding similarity
-
-### RAG Reasoning Engine
-- **Context Assembly:** Combine retrieved documents with query
-- **Evidence Analysis:** Process multiple sources for synthesis
-- **Response Generation:** Create grounded answer with attribution
-
----
 ---
 
 # Tech Stack
 
 ## Frontend
-| Layer | Technology |
-|------|-------------|
-| Framework | React 19 |
-| Build Tool | Vite |
-| Styling | TailwindCSS |
-| Rendering | Markdown Renderer |
 
----
+| Layer | Technology |
+|------|------------|
+| Framework | React 19 |
+| Build Tool | Vite 8 |
+| Styling | TailwindCSS |
+| Rendering | Markdown renderer |
 
 ## Backend
+
 | Layer | Technology |
-|------|-------------|
+|------|------------|
 | Framework | FastAPI |
 | Database | SQLite |
-| Vector DB | Elasticsearch |
-| AI Framework | LangChain |
-| Embeddings | OpenAI (text-embedding-3) |
-| LLM | GPT-5.4 nano |
+| Vector DB | Elasticsearch 8.x |
+| Agent Framework | DeepAgents + LangChain |
+| Embeddings | OpenAI embeddings |
+| LLM | `gpt-5.4-nano` |
 | News Retrieval | Tavily API |
-| Document Parsing | pypdf, python-docx |
-| Vector Operations | NumPy, Scikit-learn |
+| Document Parsing | `pypdf`, `python-docx` |
+| Scheduling | APScheduler |
+| Vector Operations | NumPy / vector math through services |
 
 ---
 
 # Project Structure
 
-```bash
+```text
 Internproject2/
-├── backend/
-│   ├── routers/
-│   │   ├── ingest.py                 # Document upload & ingestion
-│   │   ├── query.py                  # RAG query endpoint
-│   │   ├── news.py                   # News ingestion & trigger
-│   │   └── documents.py              # Document CRUD & management
-│   │
-│   ├── services/
-│   │   ├── document_ingestion_service.py      # Upload → indexing pipeline
-│   │   ├── retrieval_service.py               # Query → document retrieval
-│   │   ├── rag_agent_service.py               # Reasoning & response generation
-│   │   ├── metadata_service.py                # Metadata storage & querying
-│   │   ├── hybrid_embedding_service.py        # Metadata + content embeddings
-│   │   ├── domain_similarity_service.py       # Domain cosine similarity
-│   │   ├── domain_centroid_service.py         # Domain centroid computation
-│   │   ├── domain_assignment_service.py       # Adaptive domain assignment
-│   │   ├── news_ingestion_service.py          # Tavily + processing pipeline
-│   │   ├── extraction_service.py              # LLM metadata extraction
-│   │   ├── text_extraction_service.py         # Document → text conversion
-│   │   └── vector_service.py                  # Elasticsearch operations
-│   │
-│   ├── prompts/
-│   │   ├── domain_assignment_prompt.py        # Domain classification prompt
-│   │   └── metadata_prompt.py                 # Metadata extraction prompt
-│   │
-│   ├── app/
-│   │   ├── core/
-│   │   │   ├── config.py              # Configuration & constants
-│   │   │   └── paths.py               # File path management
-│   │   ├── db/
-│   │   │   └── database.py            # SQLite initialization
-│   │   └── models/                    # Data models & schemas
-│   │
-│   ├── storage/
-│   │   ├── uploads/                   # User-uploaded documents
-│   │   ├── news_articles/             # Downloaded news content
-│   │   └── outputs/                   # Generated artifacts
-│   │
-│   ├── main.py                        # FastAPI app entry point
-│   ├── pyproject.toml                 # Dependencies & metadata
-│   └── Dockerfile                     # Container configuration
-│
-└── frontend/
-    ├── src/
-    │   ├── components/                # React components
-    │   │   ├── ChatWindow.jsx          # Main chat interface
-    │   │   ├── SidebarFolders.jsx      # Domain navigation
-    │   │   ├── UploadModal.jsx         # Document upload
-    │   │   ├── MetadataModal.jsx       # Metadata editor
-    │   │   └── DocumentRepository.jsx  # Document browser
-    │   │
-    │   ├── pages/                      # Page components
-    │   ├── services/                   # API client services
-    │   ├── App.jsx                     # Root component
-    │   ├── main.jsx                    # React entry point
-    │   ├── index.css                   # Global styles
-    │   └── App.css                     # App-specific styles
-    │
-    ├── public/                         # Static assets
-    ├── vite.config.js                  # Vite build configuration
-    ├── package.json                    # Dependencies
-    ├── Dockerfile                      # Container configuration
-    └── README.md                       # Frontend documentation
+|-- backend/
+|   |-- app/
+|   |   |-- core/
+|   |   |   |-- config.py
+|   |   |   `-- paths.py
+|   |   |-- db/
+|   |   |   |-- database.py
+|   |   |   `-- documents.db
+|   |   |-- memory/
+|   |   |   |-- research_history.md
+|   |   |   `-- research_history_template.md
+|   |   |-- prompts/
+|   |   |   |-- domain_assignment_prompt.py
+|   |   |   `-- metadata_prompt.py
+|   |   |-- routers/
+|   |   |   |-- documents.py
+|   |   |   |-- ingest.py
+|   |   |   |-- news.py
+|   |   |   `-- query.py
+|   |   |-- services/
+|   |   |   |-- document_ingestion_service.py
+|   |   |   |-- document_service.py
+|   |   |   |-- domain_assignment_service.py
+|   |   |   |-- domain_centroid_service.py
+|   |   |   |-- domain_service.py
+|   |   |   |-- domain_similarity_service.py
+|   |   |   |-- extraction_service.py
+|   |   |   |-- file_service.py
+|   |   |   |-- hybrid_embedding_service.py
+|   |   |   |-- memory_service.py
+|   |   |   |-- metadata_extraction_service.py
+|   |   |   |-- metadata_service.py
+|   |   |   |-- news_ingestion_service.py
+|   |   |   |-- rag_agent_service.py
+|   |   |   |-- retrieval_service.py
+|   |   |   |-- scheduler_service.py
+|   |   |   |-- text_extraction_service.py
+|   |   |   `-- vector_service.py
+|   |   `-- skills/
+|   |       |-- analytical_review.md
+|   |       |-- comparative_analysis.md
+|   |       `-- retrieval_strategy.md
+|   |-- storage/
+|   |   |-- news_articles/
+|   |   |-- outputs/
+|   |   `-- uploads/
+|   |-- main.py
+|   |-- pyproject.toml
+|   |-- uv.lock
+|   `-- Dockerfile
+|-- frontend/
+|   |-- src/
+|   |   |-- components/
+|   |   |-- pages/
+|   |   |-- services/
+|   |   |-- App.jsx
+|   |   |-- main.jsx
+|   |   |-- index.css
+|   |   `-- App.css
+|   |-- public/
+|   |-- package.json
+|   |-- vite.config.js
+|   `-- Dockerfile
+`-- docker-compose.yml
 ```
 
 ---
 
 # Detailed System Flow
 
-## Document Ingestion to Retrieval
+## Ingestion Phase
 
+```text
+User uploads document or news article is fetched
+  -> Text extraction converts source to raw text
+  -> Metadata extraction identifies semantic context
+  -> Chunking splits document into searchable pieces
+  -> Hybrid embedding service creates document-level representation
+  -> Elasticsearch indexes chunks and vectors
+  -> Domain similarity service compares against adaptive centroids
+  -> Document is assigned to best matching domain
+  -> Domain centroid is recomputed
 ```
-INGESTION PHASE
-  ├─ User uploads document (PDF/DOCX/TXT/MD)
-  ├─ Text extraction service converts to raw text
-  ├─ Metadata extraction LLM identifies: title, keywords, entities, regions
-  ├─ Chunking service splits text into semantic chunks
-  ├─ Hybrid embedding service generates embeddings
-  │  └─ (metadata_embedding × 0.7) + (chunk_centroid × 0.3)
-  ├─ Elasticsearch indexes document with vectors
-  ├─ Domain similarity service scores against all domain centroids
-  ├─ Document assigned to highest-similarity domain
-  └─ Domain centroid updated (recomputed as average of domain embeddings)
 
-RETRIEVAL PHASE
-  ├─ User submits query through chat interface
-  ├─ Query embedding generated using same embedding model
-  ├─ Domain similarity service scores query against all domain centroids
-  ├─ Top-N domains identified based on similarity
-  ├─ Elasticsearch vector search within selected domains
-  ├─ Results ranked by hybrid embedding cosine similarity
-  ├─ Retrieved documents assembled into context window
-  └─ Context passed to RAG agent for reasoning
+## Retrieval Phase
 
-REASONING PHASE
-  ├─ RAG agent receives query + retrieved context
-  ├─ Agent performs structured analysis:
-  │  ├─ Extracts key information from each source
-  │  ├─ Compares and synthesizes across documents
-  │  ├─ Detects contradictions or confirmation
-  │  └─ Identifies source attribution
-  ├─ LLM generates grounded response with citations
-  ├─ Response includes metadata references and confidence scores
-  └─ Response streamed to user with source visualization
+```text
+User submits query through chat
+  -> Frontend sends query and retrieval scope
+  -> Backend creates scoped Deep Agent
+  -> Retrieval tool embeds the query
+  -> Elasticsearch returns relevant chunks
+  -> Results are cleaned, deduplicated, grouped, and ranked
+```
+
+## Reasoning Phase
+
+```text
+Deep Agent receives user request
+  -> Reads skill instructions and memory
+  -> Selects the right tool or tool sequence
+  -> Retrieves and analyzes evidence
+  -> Compares, identifies trends, or assesses risks when needed
+  -> Synthesizes final answer
+  -> Stores important research memory when appropriate
 ```
 
 ---
 
-# Deployment & Setup
+# Deployment And Setup
 
 ## Prerequisites
 
 - Python 3.11+
 - Node.js 18+
-- Elasticsearch 8.x instance
+- Elasticsearch 8.x
 - OpenAI API key
-- Tavily API key (for news ingestion)
+- Tavily API key for news ingestion
 
 ## Environment Configuration
 
-Create `.env` file in backend directory:
+Create `backend/.env`:
 
 ```env
 OPENAI_API_KEY=your_openai_key
@@ -595,32 +400,41 @@ ELASTICSEARCH_URL=http://localhost:9200
 DATABASE_URL=sqlite:///./knowledge_base.db
 ```
 
-## Quick Start
+Create `frontend/.env.docker` if using Docker and the frontend needs a backend API URL for your environment.
 
-### Using Docker Compose (Recommended)
+## Docker Compose
 
 ```bash
 docker-compose up
 ```
 
 This starts:
-- FastAPI backend (port 8000)
-- React frontend (port 5173)
-- Elasticsearch (port 9200)
 
-### Manual Setup
+- Elasticsearch on port `9200`
+- FastAPI backend on port `8000`
+- React frontend on port `5173`
 
-#### Backend
+## Manual Backend Setup
+
+Recommended with `uv`:
+
+```bash
+cd backend
+uv sync
+uv run uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+Alternative with `pip`:
 
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python main.py
+venv\Scripts\activate
+pip install -e .
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-#### Frontend
+## Manual Frontend Setup
 
 ```bash
 cd frontend
@@ -628,62 +442,55 @@ npm install
 npm run dev
 ```
 
-## Configuration
+---
 
-Edit `backend/app/core/config.py` for:
-- Embedding model selection
-- Domain similarity threshold
-- Hybrid embedding weights
-- Chunking strategy
-- News ingestion frequency
+# API Highlights
+
+| Endpoint | Method | Purpose |
+|---------|--------|---------|
+| `/query` | POST | Run a scoped Deep Agent query across global, folder, or document context. |
+| `/field-search` | POST | Extract requested fields from a document using the Deep Agent and retrieval tools. |
+| `/test-news` | GET | Test Tavily news retrieval. |
+| `/test-extract` | GET | Test article extraction. |
+| `/test-save-news` | GET | Test saving extracted news as text. |
+
+Example `/query` request:
+
+```json
+{
+  "query": "Compare the main risks discussed across these gold market documents.",
+  "scope_type": "documents",
+  "document_ids": ["doc_1", "doc_2"]
+}
+```
 
 ---
 
-# Future Roadmap
+# Roadmap
 
-## Planned Enhancements
+Planned or natural next improvements:
 
-- **Streaming Responses:** Real-time token streaming for improved UX
-- **Caching Layer:** Redis integration for performance optimization
-- **Kubernetes:** Production-grade container orchestration
-- **Fine-Tuned Embeddings:** Domain-specific embedding models
-- **Knowledge Graphs:** Entity relationship visualization
-- **Scheduled Ingestion:** Automatic periodic news fetching
-- **Multi-Agent Workflows:** Specialized agents for different query types
-- **Authentication:** User management and role-based access control
-- **Analytics Dashboard:** Query trends, domain statistics, performance metrics
-- **Multi-Language Support:** Document processing in multiple languages
+- Streaming responses in the chat UI
+- Redis caching for repeated retrieval and agent outputs
+- Stronger source citation formatting in frontend responses
+- Authentication and role-based access control
+- Analytics dashboard for query trends and domain health
+- Knowledge graph view for entities and relationships
+- Scheduled news ingestion jobs
+- Expanded memory management UI
+- Multi-agent workflows for specialized research modes
 
 ---
 
 # Project Summary
 
-## What Makes This Different
+This project demonstrates a modern full-stack AI research system:
 
-This platform demonstrates enterprise-grade AI engineering practices:
+1. Adaptive domains learn from assigned documents.
+2. Hybrid embeddings combine metadata and content signals.
+3. Elasticsearch powers scoped semantic retrieval.
+4. A Deep Agent uses skills and specialized tools for multi-step analysis.
+5. Research memory stores important findings for future context.
+6. The frontend exposes practical workflows for upload, search, chat, and repository management.
 
-1. **Adaptive Learning:** Domains don't just organize—they learn and evolve
-2. **Semantic Precision:** Hybrid embeddings and domain centroids improve over time
-3. **Automated Expansion:** Real-time news integration keeps knowledge current
-4. **Grounded Reasoning:** Multi-document synthesis with explicit source attribution
-5. **Production-Ready:** Docker deployment, error handling, scalable architecture
-
-## Suitable For
-
-- **Internship Portfolio:** Demonstrates full-stack AI engineering
-- **Enterprise Deployment:** Scalable, production-ready design patterns
-- **GitHub Showcase:** Well-documented, architected system
-- **Learning:** Comprehensive examples of RAG, embeddings, and semantic routing
-
----
-
-# Conclusion
-
-This Adaptive Domain-Aware RAG Platform showcases advanced knowledge management through:
-- Semantic intelligence that improves over time
-- Hybrid signal fusion for richer understanding
-- Automated knowledge expansion from external sources
-- Grounded, transparent AI reasoning
-- Enterprise-grade architecture and deployment
-
-The system moves beyond static document management to create a living knowledge system that learns, adapts, and serves increasingly relevant information as it grows.
+The result is more than a static document chatbot. It is a growing research workspace that can retrieve, reason, synthesize, and remember.
