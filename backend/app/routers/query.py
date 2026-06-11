@@ -13,6 +13,7 @@ from app.services.memory_service import (
     create_memory_entry,
     save_memory_entry
 )
+from app.services.report_service import create_report
 
 router = APIRouter()
 
@@ -151,6 +152,16 @@ async def query_agent(request: QueryRequest):
             print(
                 f"Memory save failed: {memory_error}"
             )
+        
+            
+        report = create_report(
+        query=request.query,
+        research_output=answer
+    )
+
+        print("\n===== REPORT =====")
+        print(report[:500])
+        print("==================\n")
 
 
         # Return response
