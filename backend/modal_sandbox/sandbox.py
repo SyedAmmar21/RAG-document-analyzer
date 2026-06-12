@@ -1,56 +1,50 @@
 import modal
 
-image = (
-    modal.Image.debian_slim()
-    .pip_install("reportlab")
-)
-
-app = modal.App("rag-document-sandbox")
+app = modal.App("sandbox-learning")
 
 
-@app.function(image=image)
-def execute_task(
-    task_type: str,
-    content: str
-):
-    if task_type != "pdf":
-        return {
-            "status": "unsupported"
-        }
+@app.function()
+def analyze_file(file_bytes: bytes):
 
-    from reportlab.pdfgen import canvas
+    text = file_bytes.decode("utf-8")
 
-    filename = "report.pdf"
+    lines = text.splitlines()
 
-    c = canvas.Canvas(filename)
+    findings = []
 
-    c.drawString(
-        100,
-        750,
-        content[:100]
-    )
+    if "RAM" in text:
+        findings.append("RAM")
 
-    c.save()
+    if "CPU" in text:
+        findings.append("CPU")
 
-    with open(filename, "rb") as f:
-        pdf_bytes = f.read()
+    if "Storage" in text:
+        findings.append("Storage")
 
-    return {
-        "status": "success",
-        "filename": filename,
-        "pdf_bytes": pdf_bytes
-    }
+    if "GPU" in text:
+        findings.append("GPU")
+
+    report = f"""
+Document Analysis
+
+Total Characters: {len(text)}
+Total Lines: {len(lines)}
+
+Detected Specifications:
+"""
+
+    for item in findings:
+        report += f"\n- {item}"
+
+    return report
 
 
 @app.local_entrypoint()
 def main():
-    result = execute_task.remote(
-        task_type="pdf",
-        content="Gold outlook report generated from sandbox"
-    )
 
-    print(
-        result["status"],
-        result["filename"],
-        len(result["pdf_bytes"])
-    )
+    with open(r"C:\\Users\\USER\\Downloads\\note.txt", "rb") as f:
+        file_bytes = f.read()
+
+    analysis = analyze_file.remote(file_bytes)
+
+    print(analysis)

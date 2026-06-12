@@ -13,7 +13,6 @@ from app.services.memory_service import (
     create_memory_entry,
     save_memory_entry
 )
-from app.services.report_service import create_report
 
 router = APIRouter()
 
@@ -35,6 +34,10 @@ class QueryRequest(BaseModel):
     folder_ids: list[str|int] = []
 
     document_ids: list[str] = []
+
+class ReportRequest(BaseModel):
+    query: str
+    answer: str
 
 class FieldSearchRequest(BaseModel):
     fields: list[str]
@@ -152,17 +155,6 @@ async def query_agent(request: QueryRequest):
             print(
                 f"Memory save failed: {memory_error}"
             )
-        
-            
-        report = create_report(
-        query=request.query,
-        research_output=answer
-    )
-
-        print("\n===== REPORT =====")
-        print(report[:500])
-        print("==================\n")
-
 
         # Return response
         return {
