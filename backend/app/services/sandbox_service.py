@@ -1,10 +1,5 @@
-from modal_sandbox.sandbox import execute_task
+from modal_sandbox.sandbox import analyze_file
 
 
-def generate_pdf_report(content: str):
-    result = execute_task.remote(
-        task_type="pdf",
-        content=content
-    )
-
-    return result
+def run_sandbox(file_bytes: bytes):
+    return analyze_file.remote(file_bytes)
