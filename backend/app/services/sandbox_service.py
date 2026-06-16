@@ -1,21 +1,18 @@
-from modal_sandbox.sandbox import analyze_file
-
-# future imports
-# from modal_sandbox.officecli import run_officecli
-# from modal_sandbox.officecli import generate_ppt
-# from modal_sandbox.officecli import generate_docx
+import modal
 
 
-class SandboxService:
-
-    @staticmethod
-    def analyze_file(file_bytes: bytes):
-        return analyze_file.remote(file_bytes)
-
-    # Placeholder for next step
-    @staticmethod
-    def execute_officecli(task: dict):
-        raise NotImplementedError("OfficeCLI not connected yet")
+APP_NAME = "sandbox-learning"
+FUNCTION_NAME = "analyze_file"
 
 
-sandbox_service = SandboxService()
+def run_sandbox(payload):
+    """
+    Call deployed Modal sandbox function.
+    """
+
+    sandbox_function = modal.Function.lookup(
+        APP_NAME,
+        FUNCTION_NAME,
+    )
+
+    return sandbox_function.remote(payload)

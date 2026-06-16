@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from app.services.retrieval_service import search_documents
 from app.services.memory_retrieval_service import get_memory_content
-
+from app.services.office_document_service import OfficeDocumentService
 
 # ========================================
 # HELPER FUNCTIONS
@@ -645,6 +645,34 @@ The following information comes from prior completed research analyses.
 
 {memory}
 """
+    
+    # TOOL 8: OFFICE DOCUMENT GENERATION
+    @tool
+    def office_document_tool(
+        title: str,
+        slides: list[str]
+    ):
+        """
+        Create downloadable Office documents.
+
+        Use this tool when the user asks for:
+
+        - PowerPoint presentations
+        - Executive briefings
+        - Investor decks
+        - Strategy presentations
+        - Downloadable reports
+        - Presentation exports
+
+        Returns a file path to the generated document.
+        """
+
+        result = OfficeDocumentService.create_presentation(
+            title=title,
+            slides=slides
+        )
+
+        return result
 
     # Return all tools for the agent
     return [
@@ -654,7 +682,8 @@ The following information comes from prior completed research analyses.
         identify_trends_tool,
         risk_analysis_tool,
         deep_research_tool,
-        research_memory_tool
+        research_memory_tool,
+        office_document_tool
     ]
 
 
@@ -770,6 +799,11 @@ MEMORY:
 - research_memory_tool: Use when the user asks about previous research,
   remembered insights, prior analyses, historical findings, or what was
   concluded before.
+
+DOCUMENT GENERATION:
+- office_document_tool: Use when the user asks for PowerPoint
+  presentations, downloadable reports, executive decks,
+  strategy presentations, investor briefings, or Office documents.
 
 ========================================
 MULTI-STEP REASONING FOR COMPLEX QUESTIONS
