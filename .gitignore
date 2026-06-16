@@ -234,3 +234,4 @@ backend/app/memory/*.md
 
 #sandbox files
 backend/sandbox_outputs/*
+backend/storage/outputs/*
