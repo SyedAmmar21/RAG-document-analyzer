@@ -733,8 +733,10 @@ def get_deep_rag_agent(
             "app/skills/retrieval_strategy.md",
             "app/skills/analytical_review.md",
             "app/skills/comparative_analysis.md",
-            "app/skills/memory_aware_analysis.md"
+            "app/skills/memory_aware_analysis.md",
+            "app/skills/officecli_skill.md"
         ],
+        
         memory=["app/memory/research_history.md"],
         system_prompt="""
 You are an expert document analyst and strategic research agent.
