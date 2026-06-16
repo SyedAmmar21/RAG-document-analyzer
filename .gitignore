@@ -231,3 +231,6 @@ backend/storage/news_articles/
 # Memory files
 backend/app/memory/*.md
 !backend/app/memory/research_history_template.md
+
+#sandbox files
+backend/app/sandbox_outputs/*
