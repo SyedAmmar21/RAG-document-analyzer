@@ -666,12 +666,16 @@ The following information comes from prior completed research analyses.
 
         Returns a file path to the generated document.
         """
+        print("\n===== OFFICE DOCUMENT TOOL =====")
+        print(f"Title: {title}")
+        print(f"Slides: {slides}")
 
         result = OfficeDocumentService.create_presentation(
             title=title,
             slides=slides
         )
-
+        print("Result:")
+        print(result)
         return result
 
     # Return all tools for the agent
