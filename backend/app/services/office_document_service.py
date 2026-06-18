@@ -8,17 +8,10 @@ class OfficeDocumentService:
         title: str,
         slides: list[str]
     ):
-        """
-        Generate a PowerPoint presentation through
-        the Modal OfficeCLI sandbox.
-        """
-
         payload = {
             "action": "create_presentation",
             "title": title,
-            "slides": slides,
+            "slides": slides
         }
 
-        result = run_sandbox(payload)
-
-        return result
+        return run_sandbox(payload)

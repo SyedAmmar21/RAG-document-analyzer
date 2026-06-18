@@ -8,6 +8,7 @@
 [![DeepAgents](https://img.shields.io/badge/DeepAgents-Agent_Framework-blue?style=flat-square)](https://github.com/langchain-ai/deepagents)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT_&_Embeddings-412991?style=flat-square&logo=openai)](https://openai.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python)](https://python.org)
+[![Modal](https://img.shields.io/badge/Modal-1.5.0+-7C3AED?style=flat-square)](https://modal.com)
 
 ---
 

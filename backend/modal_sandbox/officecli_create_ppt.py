@@ -15,7 +15,7 @@ OFFICECLI = "/root/.local/bin/officecli"
 
 
 @app.function(image=image)
-def create_ppt():
+def create_ppt(title: str, slides: list[str]):
 
     import subprocess
 
@@ -35,14 +35,53 @@ def create_ppt():
         text=True
     )
 
-    slides = [
-        "Quarterly Report",
-        "Revenue Growth",
-        "Future Roadmap",
-        "Questions"
-    ]
+    # ----------------------------
+    # TITLE SLIDE
+    # ----------------------------
 
-    for index, title in enumerate(slides, start=1):
+    subprocess.run(
+        [
+            OFFICECLI,
+            "add",
+            ppt_path,
+            "/",
+            "--type",
+            "slide"
+        ],
+        check=True,
+        capture_output=True,
+        text=True
+    )
+
+    subprocess.run(
+        [
+            OFFICECLI,
+            "add",
+            ppt_path,
+            "/slide[1]",
+            "--type",
+            "textbox",
+            "--prop",
+            f"text={title}",
+            "--prop",
+            "x=1cm",
+            "--prop",
+            "y=1cm",
+            "--prop",
+            "width=20cm",
+            "--prop",
+            "height=5cm"
+        ],
+        check=True,
+        capture_output=True,
+        text=True
+    )
+
+    # ----------------------------
+    # CONTENT SLIDES
+    # ----------------------------
+
+    for index, slide_title in enumerate(slides, start=2):
 
         subprocess.run(
             [
@@ -67,7 +106,7 @@ def create_ppt():
                 "--type",
                 "textbox",
                 "--prop",
-                f"text={title}",
+                f"text={slide_title}",
                 "--prop",
                 "x=1cm",
                 "--prop",
@@ -83,6 +122,7 @@ def create_ppt():
 
         print(textbox_result.stdout)
 
+    # Save document
     save_result = subprocess.run(
         [
             OFFICECLI,
@@ -95,6 +135,7 @@ def create_ppt():
 
     print(save_result.stdout)
 
+    # Debug inspection
     inspect_result = subprocess.run(
         [
             OFFICECLI,
@@ -108,7 +149,7 @@ def create_ppt():
 
     print(inspect_result.stdout)
 
-    # Return PPT bytes back to your PC
+    # Return ppt bytes
     with open(ppt_path, "rb") as f:
         return f.read()
 
@@ -118,7 +159,14 @@ def main():
 
     from pathlib import Path
 
-    ppt_bytes = create_ppt.remote()
+    ppt_bytes = create_ppt.remote(
+        "Demo Presentation",
+        [
+            "Introduction",
+            "Results",
+            "Conclusion"
+        ]
+    )
 
     output_dir = Path("sandbox_outputs")
     output_dir.mkdir(exist_ok=True)
