@@ -1,7 +1,6 @@
 from pathlib import Path
 from uuid import uuid4
 
-from app.core.paths import OUTPUT_DIR
 from app.services.sandbox_service import run_sandbox
 
 
@@ -12,6 +11,7 @@ class OfficeDocumentService:
         title: str,
         slides: list[str]
     ):
+
         payload = {
             "action": "create_presentation",
             "title": title,
@@ -23,18 +23,23 @@ class OfficeDocumentService:
         if result["status"] != "success":
             return result
 
-        file_bytes = result["file_bytes"]
+        outputs_dir = Path("storage/outputs")
+        outputs_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
 
         filename = f"{uuid4()}.pptx"
 
-        output_path = OUTPUT_DIR / filename
+        file_path = outputs_dir / filename
 
-        with open(output_path, "wb") as f:
-            f.write(file_bytes)
+        with open(file_path, "wb") as f:
+            f.write(
+                result["file_bytes"]
+            )
 
         return {
             "status": "success",
             "filename": filename,
-            "file_path": str(output_path),
-            "file_size": len(file_bytes)
+            "file_path": str(file_path)
         }
