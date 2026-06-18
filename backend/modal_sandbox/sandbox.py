@@ -1,7 +1,4 @@
-import os
 import modal
-from openai import OpenAI
-
 
 app = modal.App("sandbox-learning")
 
@@ -13,25 +10,49 @@ image = (
     )
 )
 
-@app.function(
-    image=image,
-    secrets=[
-        modal.Secret.from_name("openai-secret")
-    ]
-)
+@app.function(image=image)
 def analyze_file(payload):
 
     action = payload.get("action")
+
+    # ----------------------------------
+    # TEST
+    # ----------------------------------
 
     if action == "test":
         return {
             "status": "sandbox_alive"
         }
 
+    # ----------------------------------
+    # CREATE PRESENTATION
+    # ----------------------------------
+
+    if action == "create_presentation":
+
+        title = payload["title"]
+        slides = payload["slides"]
+
+        ppt_function = modal.Function.from_name(
+            "officecli-create-ppt",
+            "create_ppt"
+        )
+
+        ppt_bytes = ppt_function.remote(
+            title,
+            slides
+        )
+
+        return {
+            "status": "success",
+            "file_bytes": ppt_bytes
+        }
+
     raise ValueError(
         f"Unknown action: {action}"
     )
-    
+
+
 @app.local_entrypoint()
 def main():
 

@@ -39,7 +39,7 @@ def create_ppt(title: str, slides: list[str]):
     # TITLE SLIDE
     # ----------------------------
 
-    subprocess.run(
+    result = subprocess.run(
         [
             OFFICECLI,
             "add",
@@ -48,11 +48,22 @@ def create_ppt(title: str, slides: list[str]):
             "--type",
             "slide"
         ],
-        check=True,
         capture_output=True,
         text=True
     )
 
+    print("STDOUT:")
+    print(result.stdout)
+
+    print("STDERR:")
+    print(result.stderr)
+
+    print("RETURN CODE:")
+    print(result.returncode)
+
+    if result.returncode != 0:
+        raise Exception(result.stderr)
+    
     subprocess.run(
         [
             OFFICECLI,
