@@ -4,10 +4,19 @@ app = modal.App("officecli-create-ppt")
 
 image = (
     modal.Image.debian_slim()
-    .apt_install("curl", "libicu-dev")
+    .apt_install(
+        "curl",
+        "libicu-dev"
+    )
     .run_commands(
         "curl -fsSL https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.sh -o install.sh",
-        "bash install.sh"
+        "bash install.sh",
+
+        # diagnostics
+        "which officecli || true",
+        "officecli --version || true",
+        "dotnet --info || true",
+        "ls -R /root/.local || true"
     )
 )
 
@@ -21,25 +30,20 @@ def create_ppt(title: str, slides: list[str]):
 
     ppt_path = "/tmp/test.pptx"
 
-    # Create presentation
-    subprocess.run(
+    create_result = subprocess.run(
         [
             OFFICECLI,
-            "new",
-            ppt_path,
-            "--type",
-            "pptx"
+            "create",
+            ppt_path
         ],
-        check=True,
         capture_output=True,
         text=True
     )
 
-    # ----------------------------
-    # TITLE SLIDE
-    # ----------------------------
+    if create_result.returncode != 0:
+        raise Exception(create_result.stderr)
 
-    result = subprocess.run(
+    slide_result = subprocess.run(
         [
             OFFICECLI,
             "add",
@@ -52,19 +56,10 @@ def create_ppt(title: str, slides: list[str]):
         text=True
     )
 
-    print("STDOUT:")
-    print(result.stdout)
+    if slide_result.returncode != 0:
+        raise Exception(slide_result.stderr)
 
-    print("STDERR:")
-    print(result.stderr)
-
-    print("RETURN CODE:")
-    print(result.returncode)
-
-    if result.returncode != 0:
-        raise Exception(result.stderr)
-    
-    subprocess.run(
+    textbox_result = subprocess.run(
         [
             OFFICECLI,
             "add",
@@ -73,67 +68,12 @@ def create_ppt(title: str, slides: list[str]):
             "--type",
             "textbox",
             "--prop",
-            f"text={title}",
-            "--prop",
-            "x=1cm",
-            "--prop",
-            "y=1cm",
-            "--prop",
-            "width=20cm",
-            "--prop",
-            "height=5cm"
+            f"text={title}"
         ],
-        check=True,
         capture_output=True,
         text=True
     )
 
-    # ----------------------------
-    # CONTENT SLIDES
-    # ----------------------------
-
-    for index, slide_title in enumerate(slides, start=2):
-
-        subprocess.run(
-            [
-                OFFICECLI,
-                "add",
-                ppt_path,
-                "/",
-                "--type",
-                "slide"
-            ],
-            check=True,
-            capture_output=True,
-            text=True
-        )
-
-        textbox_result = subprocess.run(
-            [
-                OFFICECLI,
-                "add",
-                ppt_path,
-                f"/slide[{index}]",
-                "--type",
-                "textbox",
-                "--prop",
-                f"text={slide_title}",
-                "--prop",
-                "x=1cm",
-                "--prop",
-                "y=1cm",
-                "--prop",
-                "width=20cm",
-                "--prop",
-                "height=5cm"
-            ],
-            capture_output=True,
-            text=True
-        )
-
-        print(textbox_result.stdout)
-
-    # Save document
     save_result = subprocess.run(
         [
             OFFICECLI,
@@ -144,26 +84,11 @@ def create_ppt(title: str, slides: list[str]):
         text=True
     )
 
-    print(save_result.stdout)
+    if save_result.returncode != 0:
+        raise Exception(save_result.stderr)
 
-    # Debug inspection
-    inspect_result = subprocess.run(
-        [
-            OFFICECLI,
-            "get",
-            ppt_path,
-            "/"
-        ],
-        capture_output=True,
-        text=True
-    )
-
-    print(inspect_result.stdout)
-
-    # Return ppt bytes
     with open(ppt_path, "rb") as f:
         return f.read()
-
 
 @app.local_entrypoint()
 def main():
