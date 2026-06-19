@@ -29,6 +29,26 @@ Instead of treating the assistant as a simple one-shot RAG chatbot, the current 
 
 ---
 
+# New CLI Functions
+
+The project now includes three convenient command‑line utilities:
+
+- **Sandbox mode** – `python -m backend.sandbox run <script>`
+  Executes Python scripts in an isolated virtual environment with limited filesystem access, preventing side‑effects on the host system.
+
+- **Modal integration** – `modal deploy` / `modal run <function>`
+  Deploys heavy‑weight background jobs (e.g., embedding generation, large retrieval tasks) to Modal’s serverless platform directly from the repo.
+
+- **Office CLI** – `office-cli <command>`
+  Provides quick access to common administrative tasks:
+  - `office-cli start` – launches the FastAPI backend and React frontend together.
+  - `office-cli stop` – stops all Docker containers.
+  - `office-cli restart` – restarts the development environment.
+  - `office-cli logs` – streams logs from the backend, frontend, and Elasticsearch services.
+
+These tools streamline development, testing, and production workflows while keeping the local environment clean.
+
+
 # Key Features
 
 ## Intelligent Document Ingestion
