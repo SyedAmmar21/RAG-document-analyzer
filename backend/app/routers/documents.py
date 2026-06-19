@@ -24,7 +24,7 @@ from app.services.domain_service import (
 )
 from app.services.metadata_service import get_metadata as get_saved_metadata, save_metadata
 from app.services.domain_service import get_documents_by_domain
-
+from app.services.office_document_service import OfficeDocumentService
 from app.services.domain_centroid_service import (
     recompute_domain_centroid
 )
@@ -58,6 +58,11 @@ class DomainCreateRequest(BaseModel):
 class DomainUpdateRequest(BaseModel):
     name: str
     description: Optional[str] = None
+
+
+class PresentationGenerationRequest(BaseModel):
+    title: str
+    slides: list[str]
 
 
 @router.get("/documents")
@@ -398,3 +403,16 @@ async def delete_existing_domain(domain_id: int):
     return {
         "message": "Domain deleted. Documents were moved to Unorganized Files.",
     }
+
+
+@router.post("/generate-presentation")
+async def generate_presentation(request: PresentationGenerationRequest):
+    """Generate a PowerPoint presentation with specified title and slides."""
+    try:
+        result = OfficeDocumentService.create_presentation(
+            title=request.title,
+            slides=request.slides
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate presentation: {str(e)}")
