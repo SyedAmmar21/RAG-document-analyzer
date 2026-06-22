@@ -65,11 +65,6 @@ class PresentationGenerationRequest(BaseModel):
     slides: list[str]
 
 
-class DocumentExportRequest(BaseModel):
-    document_type: str
-    content: Dict[str, Any]
-
-
 @router.get("/documents")
 async def get_documents():
     conn = get_connection()
@@ -412,12 +407,7 @@ async def delete_existing_domain(domain_id: int):
 
 @router.post("/generate-presentation")
 async def generate_presentation(request: PresentationGenerationRequest):
-    """
-    Legacy presentation endpoint.
-
-    The product is moving toward agent-driven document export, but this route
-    stays available so existing clients can keep working during the migration.
-    """
+    """Generate a PowerPoint presentation with specified title and slides."""
     try:
         result = OfficeDocumentService.create_presentation(
             title=request.title,
@@ -426,41 +416,3 @@ async def generate_presentation(request: PresentationGenerationRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate presentation: {str(e)}")
-
-
-@router.post("/export-document")
-async def export_document(request: DocumentExportRequest):
-    """
-    Generic document export endpoint for future chat-driven agent workflows.
-
-    The frontend does not need new navigation for this. The existing chat flow
-    can call this endpoint once the Deep Agent starts offering export actions
-    below its research responses.
-    """
-    try:
-        result = OfficeDocumentService.export_document(
-            document_type=request.document_type,
-            content=request.content,
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to export document: {str(e)}")
-
-# Download endpoint for generated files
-@router.get("/download/{filename}")
-async def download_generated_file(filename: str):
-    # Security checks: prevent path traversal
-    if ".." in filename or "/" in filename or "\\" in filename:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-    # Build relative storage path
-    from pathlib import Path
-    from app.core.paths import OUTPUT_DIR, resolve_storage_path
-    relative_path = Path("outputs") / filename
-    try:
-        file_path = resolve_storage_path(relative_path)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(str(file_path), filename=filename)
-

@@ -647,40 +647,51 @@ The following information comes from prior completed research analyses.
 """
     
     # TOOL 8: OFFICE DOCUMENT GENERATION
+    # TOOL 8: OFFICE EXPORT
+
     @tool
-    def office_document_tool(
+    def office_export_tool(
+        format: str,
         title: str,
-        slides: list[str]
+        content: str
     ):
         """
-        Create downloadable Office documents.
+        Export generated content into Office documents.
 
-        Use this tool when the user asks for:
+        Supported formats:
+        - pptx
+        - docx
+        - pdf
+        - xlsx
 
-        - PowerPoint presentations
-        - Executive briefings
-        - Investor decks
-        - Strategy presentations
-        - Downloadable reports
-        - Presentation exports
+        Use when:
+        - user requests a downloadable file
+        - user requests a report
+        - user requests a presentation
+        - user requests a PDF export
+        - user requests an Excel export
 
-        Returns a file path to the generated document.
-
-        Note:
-        The backend export layer is now generic (`export_document`), but this
-        tool intentionally stays PPT-focused for now so current agent behavior
-        remains stable while future DOCX/XLSX/PDF export actions are added.
+        Args:
+            format: pptx/docx/pdf/xlsx
+            title: document title
+            content: document content
         """
-        print("\n===== OFFICE DOCUMENT TOOL =====")
-        print(f"Title: {title}")
-        print(f"Slides: {slides}")
 
-        result = OfficeDocumentService.create_presentation(
-            title=title,
-            slides=slides
+        print("\n===== OFFICE EXPORT TOOL =====")
+        print(f"Format: {format}")
+        print(f"Title: {title}")
+
+        result = OfficeDocumentService.export_document(
+            document_type=format,
+            content={
+                "title": title,
+                "content": content
+            }
         )
+
         print("Result:")
         print(result)
+
         return result
 
     # Return all tools for the agent
@@ -692,7 +703,7 @@ The following information comes from prior completed research analyses.
         risk_analysis_tool,
         deep_research_tool,
         research_memory_tool,
-        office_document_tool
+        office_export_tool
     ]
 
 
