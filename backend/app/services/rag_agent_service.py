@@ -665,6 +665,11 @@ The following information comes from prior completed research analyses.
         - Presentation exports
 
         Returns a file path to the generated document.
+
+        Note:
+        The backend export layer is now generic (`export_document`), but this
+        tool intentionally stays PPT-focused for now so current agent behavior
+        remains stable while future DOCX/XLSX/PDF export actions are added.
         """
         print("\n===== OFFICE DOCUMENT TOOL =====")
         print(f"Title: {title}")
