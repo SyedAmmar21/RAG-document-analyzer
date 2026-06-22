@@ -33,6 +33,7 @@ services:
       - ./backend/storage:/app/storage
       - ./backend/app/db:/app/app/db
       - ./backend/app/memory:/app/app/memory
+      - C:/Users/USER/.modal.toml:/root/.modal.toml
 
     depends_on:
       elasticsearch:
