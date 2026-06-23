@@ -25,4 +25,5 @@ dependencies = [
     "tavily-python>=0.7.24",
     "trafilatura>=2.0.0",
     "uvicorn>=0.46.0",
+    "langchain-modal>=0.0.5",
 ]

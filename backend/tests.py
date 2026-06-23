@@ -1,14 +1,16 @@
-from app.services.rag_agent_service import get_rag_agent
+import os
+os.environ["USE_MODAL_SANDBOX"] = "true"
+os.environ["MODAL_APP_NAME"] = "sandbox-learning"
 
-agent = get_rag_agent()
+from app.services.modal_sandbox_service import ModalSandboxService
 
-query = "What is AI?"
+svc = ModalSandboxService()
+svc.create_backend()
+backend = svc.create_sandbox()
+print(type(backend))  # should print <class 'langchain_modal...ModalSandbox'>
 
-response = agent.invoke({
-    "messages": [
-        {"role": "user", "content": query}
-    ]
-})
+result = backend.execute("python3 --version")
+print(result)
 
-print("\n--- AGENT RESPONSE ---\n")
-print(response["messages"][-1].content)
+svc.terminate_sandbox()
+print("Terminated cleanly")
