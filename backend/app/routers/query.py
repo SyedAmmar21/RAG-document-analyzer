@@ -20,6 +20,7 @@ router = APIRouter()
 # Request schema
 from typing import Optional
 from pydantic import BaseModel
+from uuid import uuid4
 
 
 class QueryRequest(BaseModel):
@@ -34,6 +35,7 @@ class QueryRequest(BaseModel):
     folder_ids: list[str|int] = []
 
     document_ids: list[str] = []
+    thread_id: str = "default"
 
 class ReportRequest(BaseModel):
     query: str
@@ -48,7 +50,7 @@ class FieldSearchRequest(BaseModel):
 async def query_agent(request: QueryRequest):
     # GLOBAL mode
     if request.scope_type == "global":
-        agent = get_deep_rag_agent()
+        agent = get_deep_rag_agent(thread_id=request.thread_id)
 
     # FOLDER mode
     elif request.scope_type == "folders":
@@ -90,19 +92,22 @@ async def query_agent(request: QueryRequest):
 
 
         agent = get_deep_rag_agent(
-            document_ids=all_document_ids
+            document_ids=all_document_ids,
+            thread_id=request.thread_id
         )
 
     # DOCUMENT mode
     elif request.scope_type == "documents":
         agent = get_deep_rag_agent(
-            document_ids=request.document_ids
+            document_ids=request.document_ids,
+            thread_id=request.thread_id
         )
 
     # FALLBACK single-document compatibility
     else:
         agent = get_deep_rag_agent(
-            document_id=request.document_id
+            document_id=request.document_id,
+            thread_id=request.thread_id
         )
 
     # Run agent with error handling
@@ -120,7 +125,10 @@ async def query_agent(request: QueryRequest):
             config={
                 # Recursion limit for multi-step planning with specialized tools.
                 # Each tool call + reasoning step counts as 1 recursion iteration.
-                "recursion_limit": 25
+                "recursion_limit": 25,
+                "configurable": {
+                    "thread_id": request.thread_id
+                }
             }
         )
 
@@ -183,7 +191,8 @@ async def field_search(request: FieldSearchRequest):
             "answer": "Add at least one field or search key to extract from the document."
         }
 
-    agent = get_deep_rag_agent(request.document_id)
+    field_search_thread_id = f"field-search:{request.document_id or uuid4()}"
+    agent = get_deep_rag_agent(request.document_id, thread_id=field_search_thread_id)
     fields_text = "\n".join(f"- {field}" for field in fields)
 
     prompt = f"""
@@ -218,7 +227,10 @@ Rules:
 
             config={
                 # Recursion limit for multi-step planning with specialized tools.
-                "recursion_limit": 25
+                "recursion_limit": 25,
+                "configurable": {
+                    "thread_id": field_search_thread_id
+                }
             }
         )
 

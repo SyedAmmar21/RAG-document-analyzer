@@ -26,6 +26,7 @@ export const uploadFile = async (file) => {
 export const queryAgent = async ({
   query,
   document_id = null,
+  thread_id = "default",
 
   // NEW retrieval scope fields
   scope_type = "global",
@@ -42,6 +43,7 @@ export const queryAgent = async ({
     body: JSON.stringify({
       query,
       document_id,
+      thread_id,
 
       // NEW
       scope_type,

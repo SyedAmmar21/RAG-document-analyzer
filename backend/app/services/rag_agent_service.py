@@ -6,11 +6,13 @@ from deepagents import create_deep_agent
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 import re
+import os
 from collections import defaultdict
 
 from app.services.retrieval_service import search_documents
 from app.services.memory_retrieval_service import get_memory_content
 from app.services.office_document_service import OfficeDocumentService
+from app.services.sandbox.session_store import get_backend
 
 # ========================================
 # HELPER FUNCTIONS
@@ -746,7 +748,8 @@ If no relevant information is found, clearly say so.
 
 def get_deep_rag_agent(
     document_id: str | None = None,
-    document_ids: list[str] | None = None
+    document_ids: list[str] | None = None,
+    thread_id: str = "default"
 ):
     """
     Create a Deep Agent specialized for multi-step analytical research.
@@ -774,10 +777,14 @@ def get_deep_rag_agent(
         document_id=document_id,
         document_ids=document_ids
     )
+    # Only attach sandbox if enabled — avoids _NoOpSandbox breaking the agent
+    use_sandbox = os.getenv("USE_MODAL_SANDBOX", "false").lower() == "true"
+    sandbox_backend = get_backend(thread_id) if use_sandbox else None
 
     agent = create_deep_agent(
         model=llm,
         tools=tools,
+        **({"backend": sandbox_backend} if sandbox_backend else {}),
         skills=[
             "app/skills/retrieval_strategy.md",
             "app/skills/analytical_review.md",

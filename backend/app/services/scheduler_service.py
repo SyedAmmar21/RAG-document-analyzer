@@ -11,6 +11,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.services.news_ingestion_service import ingest_latest_gold_news
+from app.services.sandbox.session_store import cleanup_idle
 
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,7 @@ def _scheduled_news_ingestion():
             "failed": [],
             "skipped": [],
         }
+    cleanup_idle()
 
 
 def get_latest_scheduled_result() -> Dict[str, Any]:

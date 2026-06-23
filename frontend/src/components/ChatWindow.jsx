@@ -33,6 +33,7 @@ export default function ChatWindow({
   const [isIngestingNews, setIsIngestingNews] = useState(false);
   const [newsProgress, setNewsProgress] = useState([]);
   const [newsSummary, setNewsSummary] = useState(null);
+  const [threadId] = useState(() => crypto.randomUUID());
 
   const handleSend = async () => {
     const trimmedQuery = query.trim();
@@ -49,6 +50,7 @@ export default function ChatWindow({
       const res = await queryAgent({
         query: trimmedQuery,
         document_id: documentId,
+        thread_id: threadId,
         scope_type: scopeType,
         folder_ids: selectedFolderIds,
         document_ids: selectedDocumentIds,
