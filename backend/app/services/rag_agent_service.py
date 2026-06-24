@@ -11,8 +11,7 @@ from collections import defaultdict
 
 from app.services.retrieval_service import search_documents
 from app.services.memory_retrieval_service import get_memory_content
-from app.services.office_document_service import OfficeDocumentService
-from app.services.sandbox.session_store import get_backend
+
 
 # ========================================
 # HELPER FUNCTIONS
@@ -231,7 +230,7 @@ DOCUMENT: {doc_display_name}
 
 
 
-def create_tools(llm, document_id=None, document_ids=None):
+def create_tools(llm, document_id=None, document_ids=None, thread_id="default"):
 
     # TOOL 1: SEARCH DOCUMENTS
 
@@ -648,53 +647,49 @@ The following information comes from prior completed research analyses.
 {memory}
 """
     
-    # TOOL 8: OFFICE DOCUMENT GENERATION
-    # TOOL 8: OFFICE EXPORT
-
+    # TOOL 8: SANDBOX EXECUTE
     @tool
-    def office_export_tool(
-        format: str,
-        title: str,
-        content: str
-    ):
+    def sandbox_execute(command: str) -> str:
         """
-        Export generated content into Office documents.
+        Run a shell command inside the Modal sandbox.
 
-        Supported formats:
-        - pptx
-        - docx
-        - pdf
-        - xlsx
+        Use this tool for ALL OfficeCLI document generation commands.
+        Use when the user asks to create presentations, reports,
+        spreadsheets, or PDF documents.
 
-        Use when:
-        - user requests a downloadable file
-        - user requests a report
-        - user requests a presentation
-        - user requests a PDF export
-        - user requests an Excel export
+        Always:
+        - Create output directory first: mkdir -p /workspace/output
+        - Save files to /workspace/output/<filename>.<format>
+        - Check exit_code == 0 in the response before continuing
+        - Follow the OfficeCLI skill file for exact command sequences
+
+        Supported formats: pptx, docx, xlsx, pdf
 
         Args:
-            format: pptx/docx/pdf/xlsx
-            title: document title
-            content: document content
+            command: shell command to run in the sandbox
+
+        Returns:
+            exit_code and output from the command
         """
+        import os
+        from app.services.sandbox.session_store import get_backend as _get_backend
 
-        print("\n===== OFFICE EXPORT TOOL =====")
-        print(f"Format: {format}")
-        print(f"Title: {title}")
+        if os.getenv("USE_MODAL_SANDBOX", "false").lower() != "true":
+            return "exit_code=1\noutput=Sandbox is disabled (USE_MODAL_SANDBOX=false)"
 
-        result = OfficeDocumentService.export_document(
-            document_type=format,
-            content={
-                "title": title,
-                "content": content
-            }
+        backend = _get_backend(thread_id)
+
+        # OfficeCLI is installed in /root/.local/bin inside Modal sandboxes.
+        # Ensure it is available on PATH for every command.
+        command = f"export PATH=/root/.local/bin:$PATH && {command}"
+
+        result = backend.execute(command)
+
+        return (
+            f"exit_code={result.exit_code}\n"
+            f"output={result.output}"
         )
-
-        print("Result:")
-        print(result)
-
-        return result
+    
 
     # Return all tools for the agent
     return [
@@ -705,7 +700,7 @@ The following information comes from prior completed research analyses.
         risk_analysis_tool,
         deep_research_tool,
         research_memory_tool,
-        office_export_tool
+        sandbox_execute
     ]
 
 
@@ -777,14 +772,10 @@ def get_deep_rag_agent(
         document_id=document_id,
         document_ids=document_ids
     )
-    # Only attach sandbox if enabled — avoids _NoOpSandbox breaking the agent
-    use_sandbox = os.getenv("USE_MODAL_SANDBOX", "false").lower() == "true"
-    sandbox_backend = get_backend(thread_id) if use_sandbox else None
 
     agent = create_deep_agent(
         model=llm,
         tools=tools,
-        **({"backend": sandbox_backend} if sandbox_backend else {}),
         skills=[
             "app/skills/retrieval_strategy.md",
             "app/skills/analytical_review.md",
@@ -828,9 +819,17 @@ MEMORY:
   concluded before.
 
 DOCUMENT GENERATION:
-- office_document_tool: Use when the user asks for PowerPoint
-  presentations, downloadable reports, executive decks,
-  strategy presentations, investor briefings, or Office documents.
+When the user asks to create, generate, or export any document
+(PowerPoint presentation, Word report, Excel spreadsheet, PDF):
+- Use your execute tool directly to run OfficeCLI commands in the sandbox
+- Follow the OfficeCLI skill file for exact command sequences
+- Save all generated files to /workspace/output/
+- Create output directory first: execute("mkdir -p /workspace/output")
+- Load the right skill first: execute("officecli load_skill pptx") etc.
+- Check exit_code == 0 after every command
+- Tell the user their document is ready when done
+- Supported formats: pptx, docx, xlsx, pdf
+- You decide the structure, content, and layout freely based on the request
 
 ========================================
 MULTI-STEP REASONING FOR COMPLEX QUESTIONS
@@ -940,6 +939,19 @@ Result: Executive-level conclusion with:
 ========================================
 
 When no relevant information is found, clearly say so.
+
+SANDBOX EXECUTION RULES:
+- When running multiple OfficeCLI commands, batch them using officecli batch
+  to reduce the number of execute calls
+- Always complete document generation in as few execute calls as possible
+- Use officecli batch for multi-step document creation:
+
+  execute('''echo '[
+    {"command":"add","path":"/","type":"slide","props":{"title":"Slide 1"}},
+    {"command":"add","path":"/slide[1]","type":"shape","props":{"text":"Content"}}
+  ]' | officecli batch /workspace/output/file.pptx''')
+
+- Prefer batch over individual commands whenever adding multiple elements
 """,
         debug=True
         

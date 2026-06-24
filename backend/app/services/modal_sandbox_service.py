@@ -99,7 +99,22 @@ class ModalSandboxService:
         try:
             # ``modal.Sandbox.create`` returns a sandbox that can be passed to
             # ``ModalSandbox`` from LangChain.
-            self._sandbox = modal.Sandbox.create(app=self._modal_app)
+            modal.enable_output()
+
+            image = (
+                modal.Image.debian_slim()
+                .apt_install("curl")
+                .run_commands(
+                    "curl -fsSL https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.sh | bash",
+                    "find / -name officecli 2>/dev/null || true",
+                    "echo PATH=$PATH"
+                )
+            )
+
+            self._sandbox = modal.Sandbox.create(
+                app=self._modal_app,
+                image=image,
+            )
             logger.info("Modal sandbox created successfully.")
             return ModalSandbox(sandbox=self._sandbox)
         except Exception as exc:  

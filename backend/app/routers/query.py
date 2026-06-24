@@ -1,10 +1,13 @@
 from urllib import request
+import logging
+from pathlib import Path
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 from app.services.rag_agent_service import get_deep_rag_agent
 from app.services.document_service import add_ai_response
 from app.services.domain_service import get_documents_by_domain
+from app.services.sandbox.session_store import get_backend
 
 from app.services.news_ingestion_service import search_gold_news
 from app.services.news_ingestion_service import extract_article_text
@@ -15,6 +18,7 @@ from app.services.memory_service import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # Request schema
@@ -125,12 +129,37 @@ async def query_agent(request: QueryRequest):
             config={
                 # Recursion limit for multi-step planning with specialized tools.
                 # Each tool call + reasoning step counts as 1 recursion iteration.
-                "recursion_limit": 25,
+                "recursion_limit": 50,
                 "configurable": {
                     "thread_id": request.thread_id
                 }
             }
         )
+
+        # Post-invoke: download any files the agent generated in sandbox
+        try:
+            sandbox_backend = get_backend(request.thread_id)
+            check = sandbox_backend.execute("ls /workspace/output/ 2>/dev/null")
+            if check.exit_code == 0 and check.output.strip():
+                filenames = [f.strip() for f in check.output.strip().split("\n") if f.strip()]
+                downloaded_urls = []
+                for filename in filenames:
+                    results = sandbox_backend.download_files(
+                        [f"/workspace/output/{filename}"]
+                    )
+                    if results and results[0].content is not None:
+                        out_dir = Path("storage/outputs")
+                        out_dir.mkdir(parents=True, exist_ok=True)
+                        out_path = out_dir / filename
+                        out_path.write_bytes(results[0].content)
+                        downloaded_urls.append(f"/download/{filename}")
+                        # Clear file from sandbox after download
+                        sandbox_backend.execute(f"rm /workspace/output/{filename}")
+                if downloaded_urls:
+                    response["download_urls"] = downloaded_urls
+        except Exception as e:
+            logger.warning("File download post-processing failed: %s", e)
+            # Never break the main agent response over file download
 
         # Extract answer only after successful invoke
         answer = response["messages"][-1].content
@@ -165,9 +194,12 @@ async def query_agent(request: QueryRequest):
             )
 
         # Return response
-        return {
+        result = {
             "answer": answer
         }
+        if "download_urls" in response:
+            result["download_urls"] = response["download_urls"]
+        return result
     
     except Exception as e:
         # Handle any agent errors (GraphRecursionError, LLM errors, etc.)

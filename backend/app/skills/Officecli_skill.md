@@ -1,17 +1,42 @@
 # OfficeCLI Integration For RAG Document Analyzer
 
-When document generation is required:
+When the user asks to generate, create, or export any document:
 
-1. Use office_document_tool.
-2. OfficeCLI runs inside Modal Sandbox.
-3. Generated files must be written to storage/outputs.
-4. Return the generated file path.
-5. Never generate Office XML manually.
-6. Follow OfficeCLI instructions below.
+1. Use your execute tool to run OfficeCLI commands directly in the sandbox.
+   Do NOT use any hardcoded tool or service for document generation.
+   The agent decides structure, content, and commands freely.
 
----
-name: officecli
-description: Create, analyze, proofread, and modify Office documents (.docx, .xlsx, .pptx) using the officecli CLI tool. Use when the user wants to create, inspect, check formatting, find issues, add charts, or modify Office documents.
+2. Always save output files to /workspace/output/<filename>.<format>
+
+3. First create the output directory:
+   execute("mkdir -p /workspace/output")
+   Check exit_code == 0 before continuing.
+
+4. Load the appropriate specialized skill before starting:
+   Presentations -> execute("officecli load_skill pptx")
+   Word docs     -> execute("officecli load_skill word")
+   Spreadsheets  -> execute("officecli load_skill excel")
+
+5. Follow the OfficeCLI command sequences in this skill file exactly.
+   When unsure about syntax run:
+   execute("officecli help <format> <element>")
+   Never guess property names.
+
+6. Check exit_code == 0 after every single execute() call.
+   If a command fails, read the output, fix the command, retry.
+
+7. Supported formats: pptx, docx, xlsx, pdf
+
+8. When the file is ready, tell the user:
+   "Your document has been generated. Downloading it for you now."
+
+9. Never generate Office XML manually.
+10. Never use python-pptx, python-docx, openpyxl, or reportlab directly.
+    Always use OfficeCLI commands via execute tool.
+
+DO NOT change anything below the first --- separator in this file.
+Everything below that line is correct and must stay exactly as is.
+
 ---
 
 # officecli
