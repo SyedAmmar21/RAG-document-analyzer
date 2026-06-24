@@ -3,7 +3,6 @@ from multiprocessing import context
 from unittest import result
 from langchain.tools import tool
 from deepagents import create_deep_agent
-from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 import re
 import os
@@ -683,11 +682,14 @@ The following information comes from prior completed research analyses.
         # Ensure it is available on PATH for every command.
         command = f"export PATH=/root/.local/bin:$PATH && {command}"
 
+        print(f"EXECUTING: {command}")
         result = backend.execute(command)
+        output_listing = backend.execute("ls -1 /workspace/output 2>/dev/null || true")
 
         return (
             f"exit_code={result.exit_code}\n"
-            f"output={result.output}"
+            f"output={result.output}\n"
+            f"output_dir_listing={output_listing.output}"
         )
     
 
@@ -702,44 +704,6 @@ The following information comes from prior completed research analyses.
         research_memory_tool,
         sandbox_execute
     ]
-
-
-
-
-
-# agent
-def get_rag_agent(document_id: str | None = None, document_ids: list[str] | None = None):
-    llm = ChatOpenAI(model="gpt-5.4-nano")
-
-    tools = create_tools(llm=llm, document_id=document_id, document_ids=document_ids)
-
-    agent = create_agent(
-        model=llm,
-        tools=tools,
-        system_prompt="""
-You are an intelligent document search and retrieval assistant.
-
-Your job:
-- Understand the user's question carefully
-- Use appropriate tools to retrieve relevant information
-- Provide clear, evidence-based answers
-
-Tool usage:
-- search_documents_tool: For factual questions, quick answers, information lookups
-- summarize_document_tool: For document summaries and overviews
-- For analysis or comparison questions, consider using the deep RAG agent instead
-
-Answer quality:
-- Always base your answer ONLY on retrieved document content
-- Cite your sources explicitly
-- Do NOT hallucinate, speculate, or go beyond retrieved evidence
-- When evidence is limited, acknowledge this explicitly
-
-If no relevant information is found, clearly say so.
-"""
-    )
-
-    return agent
 
 def get_deep_rag_agent(
     document_id: str | None = None,
@@ -770,7 +734,8 @@ def get_deep_rag_agent(
     tools = create_tools(
         llm=llm,
         document_id=document_id,
-        document_ids=document_ids
+        document_ids=document_ids,
+        thread_id=thread_id
     )
 
     agent = create_deep_agent(

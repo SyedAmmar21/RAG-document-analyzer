@@ -103,11 +103,15 @@ class ModalSandboxService:
 
             image = (
                 modal.Image.debian_slim()
-                .apt_install("curl")
+                .apt_install(
+                    "curl",
+                    "libicu-dev"
+                )
                 .run_commands(
-                    "curl -fsSL https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.sh | bash",
-                    "find / -name officecli 2>/dev/null || true",
-                    "echo PATH=$PATH"
+                        "curl -fsSL https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.sh | bash",
+                        "find / -name officecli 2>/dev/null || true",
+                        "which officecli || true",
+                        "ls -la ~/.local/bin || true"
                 )
             )
 

@@ -44,9 +44,24 @@ def get_backend(thread_id: str) -> ModalSandbox:
     with _sessions_lock:
         existing_session = _sessions.get(thread_id)
         if existing_session is not None:
-            existing_session.last_used = now
-            logger.info("Reusing Modal sandbox backend for thread_id=%s", thread_id)
-            return existing_session.backend
+            try:
+                existing_session.backend.execute("echo alive")
+                existing_session.last_used = now
+
+                logger.info(
+                    "Reusing Modal sandbox backend for thread_id=%s",
+                    thread_id,
+                )
+
+                return existing_session.backend
+
+            except Exception:
+                logger.warning(
+                    "Sandbox for thread_id=%s is dead. Recreating.",
+                    thread_id,
+                )
+
+                _sessions.pop(thread_id, None)
 
     service = ModalSandboxService()
     backend = service.create_sandbox()
