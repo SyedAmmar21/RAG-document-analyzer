@@ -129,7 +129,7 @@ async def query_agent(request: QueryRequest):
             config={
                 # Recursion limit for multi-step planning with specialized tools.
                 # Each tool call + reasoning step counts as 1 recursion iteration.
-                "recursion_limit": 50,
+                "recursion_limit": 75,
                 "configurable": {
                     "thread_id": request.thread_id
                 }

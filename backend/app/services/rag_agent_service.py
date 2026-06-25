@@ -658,6 +658,9 @@ The following information comes from prior completed research analyses.
 
         Always:
         - Create output directory first: mkdir -p /workspace/output
+        - IMPORTANT FOR NEW FILES: 'officecli batch' expects the target file to exist. 
+          If creating a brand new presentation, you MUST initialize an empty file 
+          using 'touch /workspace/output/<filename>.pptx' before running officecli.
         - Save files to /workspace/output/<filename>.<format>
         - Check exit_code == 0 in the response before continuing
         - Follow the OfficeCLI skill file for exact command sequences
@@ -729,7 +732,7 @@ def get_deep_rag_agent(
     the agent avoid hallucination by using specialized tools for each
     analytical dimension.
     """
-    llm = ChatOpenAI(model="gpt-5.4-nano")
+    llm = ChatOpenAI(model="gpt-5.4-mini")
 
     tools = create_tools(
         llm=llm,

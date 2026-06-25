@@ -1,42 +1,241 @@
 # OfficeCLI Integration For RAG Document Analyzer
 
-When the user asks to generate, create, or export any document:
+When the user asks to generate, create, export, or modify an Office document, use OfficeCLI through the `sandbox_execute` tool running inside the Modal Sandbox.
 
-1. Use your execute tool to run OfficeCLI commands directly in the sandbox.
-   Do NOT use any hardcoded tool or service for document generation.
-   The agent decides structure, content, and commands freely.
+---
 
-2. Always save output files to /workspace/output/<filename>.<format>
+# CORE RULES — READ BEFORE DOING ANYTHING
 
-3. First create the output directory:
-   execute("mkdir -p /workspace/output")
-   Check exit_code == 0 before continuing.
+1. PLAN THE ENTIRE DOCUMENT BEFORE EXECUTING ANY COMMANDS.
 
-4. Load the appropriate specialized skill before starting:
-   Presentations -> execute("officecli load_skill pptx")
-   Word docs     -> execute("officecli load_skill word")
-   Spreadsheets  -> execute("officecli load_skill excel")
+   Decide the complete structure of the document first.
+   Know every slide, section, table, worksheet, or page before writing any OfficeCLI commands.
 
-5. Follow the OfficeCLI command sequences in this skill file exactly.
-   When unsure about syntax run:
-   execute("officecli help <format> <element>")
-   Never guess property names.
+   Do NOT alternate between planning and execution.
 
-6. Check exit_code == 0 after every single execute() call.
-   If a command fails, read the output, fix the command, retry.
+2. TREAT OFFICECLI AS A DOCUMENT GENERATOR, NOT AN EDITOR.
 
-7. Supported formats: pptx, docx, xlsx, pdf
+   Generate the finished document directly.
 
-8. When the file is ready, tell the user:
-   "Your document has been generated. Downloading it for you now."
+   Do NOT repeatedly modify an existing document unless the user explicitly requests revisions.
 
-9. Never generate Office XML manually.
-10. Never use python-pptx, python-docx, openpyxl, or reportlab directly.
-    Always use OfficeCLI commands via execute tool.
+3. MINIMIZE `sandbox_execute()` CALLS.
 
-DO NOT change anything below the first --- separator in this file.
-Everything below that line is correct and must stay exactly as is.
+   Prefer one complete workflow over many incremental executions.
 
+   Small documents should normally require only:
+
+   - Setup
+   - Load skill
+   - Generate document
+   - Optional verification
+
+   Avoid one execute call per slide, page, paragraph, or element.
+
+4. USE DEFAULT OFFICECLI FORMATTING.
+
+   Unless explicitly requested:
+
+   - use default layouts
+   - use default fonts
+   - use default themes
+   - use default styling
+
+   Do NOT spend time choosing colors, alignment, spacing, animations, or visual refinements.
+
+5. PRIORITIZE SUCCESSFUL DOCUMENT GENERATION OVER VISUAL PERFECTION.
+
+---
+
+# REQUIRED WORKFLOW
+
+## Step 1 — Create Output Directory
+
+Execute:
+
+```bash
+mkdir -p /workspace/output
+```
+
+Continue only if:
+
+- exit_code == 0
+
+---
+
+## Step 2 — Load OfficeCLI Skill (ONCE)
+
+Load the appropriate skill exactly once for the current document.
+
+Presentations
+
+```bash
+officecli load_skill pptx
+```
+
+Word documents
+
+```bash
+officecli load_skill word
+```
+
+Spreadsheets
+
+```bash
+officecli load_skill excel
+```
+
+Rules:
+
+- Never reload the same skill during the same document generation session.
+- Only load another skill if generating a different document type.
+
+---
+
+## Step 3 — Generate the Entire Document
+
+Before executing:
+
+- plan the entire document
+- prepare all OfficeCLI commands
+- batch related commands together whenever practical
+
+Prefer generating the entire document in a single workflow rather than incrementally building it.
+
+If multiple OfficeCLI commands are required, combine them into one script or one shell execution whenever practical instead of executing commands individually.
+
+Do NOT generate one slide, think again, generate another slide, think again.
+
+---
+
+## Step 4 — Handle Execution Results
+
+After each execute call:
+
+If:
+
+```
+exit_code == 0
+```
+
+continue.
+
+If:
+
+```
+exit_code != 0
+```
+
+then:
+
+1. Read the error carefully.
+2. Use
+
+```bash
+officecli help <format> <element>
+```
+
+only if the syntax is genuinely unknown.
+
+3. Fix the failed command.
+
+4. Retry ONLY the failed command.
+
+Do not restart the entire workflow.
+
+Never guess OfficeCLI syntax.
+
+---
+
+## Step 5 — Save Output
+
+Always save generated documents to:
+
+```
+/workspace/output/<filename>.<format>
+```
+
+Save the document once after generation.
+
+Avoid saving intermediate versions unless required.
+
+---
+
+# STOP CONDITIONS
+
+Immediately stop OfficeCLI execution when:
+
+- exit_code == 0
+- the requested output file has been successfully generated
+
+Once generation succeeds:
+
+- do NOT redesign the document
+- do NOT verify every slide
+- do NOT verify every page
+- do NOT repeatedly check formatting
+- do NOT perform unnecessary improvement passes
+- do NOT continue issuing OfficeCLI commands
+
+Return the generated filename and inform the user that the document is ready for download.
+
+---
+
+# DESIGN PHILOSOPHY
+
+Document generation should behave as a deterministic workflow rather than an interactive editing session.
+
+Once generation begins:
+
+- continue toward completion
+- avoid unnecessary reasoning between successful execution steps
+- avoid repeated planning after execution has started
+- prefer completing one large task over many small successful tasks
+
+---
+
+# RULES
+
+Always:
+
+- use OfficeCLI through `sandbox_execute()`
+- follow the OfficeCLI documentation exactly
+- minimize OfficeCLI executions
+- batch related commands together whenever practical
+
+Never:
+
+- invent OfficeCLI syntax
+- manually generate Office XML
+- use `python-pptx`
+- use `python-docx`
+- use `openpyxl`
+- use `reportlab`
+- repeatedly reload OfficeCLI skills
+- redesign documents unless requested
+
+---
+
+# SUPPORTED FORMATS
+
+- pptx
+- docx
+- xlsx
+
+PDF is not natively supported by OfficeCLI.
+
+When a PDF is requested:
+
+- generate the closest supported Office document
+- explain that PDF export requires a supported exporter or a separate conversion step
+
+---
+
+Everything below this separator is the official OfficeCLI documentation.
+
+Follow it exactly.
+
+Do not modify it.
 ---
 
 # officecli

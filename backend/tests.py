@@ -1,10 +1,22 @@
-from app.services.sandbox.session_store import get_backend
+from app.services.modal_sandbox_service import ModalSandboxService
 
-backend = get_backend("test-thread")
+service = ModalSandboxService()
+backend = service.create_sandbox()
 
-command = "export PATH=/root/.local/bin:$PATH && officecli --version"
+commands = [
+    "export PATH=/root/.local/bin:$PATH && dotnet --info",
+    "export PATH=/root/.local/bin:$PATH && officecli --version",
+    "export PATH=/root/.local/bin:$PATH && officecli help pptx",
+    "export PATH=/root/.local/bin:$PATH && officecli create /workspace/output/test.pptx",
+    "export PATH=/root/.local/bin:$PATH && ls -lah /workspace/output",
+]
 
-result = backend.execute(command)
+for cmd in commands:
+    print("\n" + "=" * 80)
+    print(cmd)
+    print("=" * 80)
 
-print(result.exit_code)
-print(result.output)
+    result = backend.execute(cmd)
+
+    print("Exit code:", result.exit_code)
+    print(result.output)
