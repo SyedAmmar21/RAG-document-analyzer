@@ -26,6 +26,7 @@ dependencies = [
     "trafilatura>=2.0.0",
     "uvicorn>=0.46.0",
     "langchain-modal>=0.0.5",
+    "langchain-aws>=1.6.1",
 ]
 
 [dependency-groups]

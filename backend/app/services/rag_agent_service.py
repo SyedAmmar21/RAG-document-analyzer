@@ -1,9 +1,8 @@
-from email.mime import text
 from multiprocessing import context
-from unittest import result
 from langchain.tools import tool
 from deepagents import create_deep_agent
 from langchain_openai import ChatOpenAI
+from langchain_aws import ChatBedrock
 import re
 import os
 from collections import defaultdict
@@ -732,7 +731,10 @@ def get_deep_rag_agent(
     the agent avoid hallucination by using specialized tools for each
     analytical dimension.
     """
-    llm = ChatOpenAI(model="gpt-5.4-mini")
+    llm = ChatBedrock(
+        model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
+        region_name=os.getenv("AWS_REGION"),
+    )
 
     tools = create_tools(
         llm=llm,
