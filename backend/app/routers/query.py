@@ -296,39 +296,3 @@ Rules:
         return {
             "answer": error_message
         }
-
-@router.get("/test-news")
-def test_news():
-
-    results = search_gold_news()
-
-    return results
-
-@router.get("/test-extract")
-def test_extract():
-
-    url = "https://markets.businessinsider.com/news/stocks/iux-publishes-gold-market-insight-on-volatility-trends-and-user-engagement-in-2026-1036148744"
-
-    text = extract_article_text(url)
-
-    return {
-        "length": len(text) if text else 0,
-        "preview": text[:3000] if text else None
-    }
-
-@router.get("/test-save-news")
-def test_save_news():
-
-    url = "https://markets.businessinsider.com/news/stocks/iux-publishes-gold-market-insight-on-volatility-trends-and-user-engagement-in-2026-1036148744"
-
-    text = extract_article_text(url)
-
-    path = save_article_as_txt(
-        "gold_market_test",
-        text
-    )
-
-    return {
-        "saved_path": path,
-        "text_length": len(text)
-    }
