@@ -1,14 +1,14 @@
 from multiprocessing import context
 from langchain.tools import tool
 from deepagents import create_deep_agent
-from langchain_openai import ChatOpenAI
-from langchain_aws import ChatBedrock
+from langchain_aws import ChatBedrockConverse
 import re
 import os
 from collections import defaultdict
 
 from app.services.retrieval_service import search_documents
 from app.services.memory_retrieval_service import get_memory_content
+from langchain_aws.middleware.prompt_caching import BedrockPromptCachingMiddleware
 
 
 # ========================================
@@ -731,8 +731,8 @@ def get_deep_rag_agent(
     the agent avoid hallucination by using specialized tools for each
     analytical dimension.
     """
-    llm = ChatBedrock(
-        model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    llm = ChatBedrockConverse(
+        model="global.anthropic.claude-haiku-4-5-20251001-v1:0",
         region_name=os.getenv("AWS_REGION"),
     )
 
@@ -791,11 +791,11 @@ MEMORY:
 DOCUMENT GENERATION:
 When the user asks to create, generate, or export any document
 (PowerPoint presentation, Word report, Excel spreadsheet, PDF):
-- Use your execute tool directly to run OfficeCLI commands in the sandbox
+- Use sandbox_execute tool directly to run OfficeCLI commands in the sandbox
 - Follow the OfficeCLI skill file for exact command sequences
 - Save all generated files to /workspace/output/
-- Create output directory first: execute("mkdir -p /workspace/output")
-- Load the right skill first: execute("officecli load_skill pptx") etc.
+- Create output directory first: sandbox_execute("mkdir -p /workspace/output")
+- Load the right skill first: sandbox_execute("officecli load_skill pptx") etc.
 - Check exit_code == 0 after every command
 - Tell the user their document is ready when done
 - Supported formats: pptx, docx, xlsx, pdf
@@ -916,13 +916,21 @@ SANDBOX EXECUTION RULES:
 - Always complete document generation in as few execute calls as possible
 - Use officecli batch for multi-step document creation:
 
-  execute('''echo '[
+  sandbox_execute('''echo '[
     {"command":"add","path":"/","type":"slide","props":{"title":"Slide 1"}},
     {"command":"add","path":"/slide[1]","type":"shape","props":{"text":"Content"}}
   ]' | officecli batch /workspace/output/file.pptx''')
 
 - Prefer batch over individual commands whenever adding multiple elements
 """,
+        middleware=[
+            BedrockPromptCachingMiddleware(
+                ttl="1h",
+                min_messages_to_cache=0,
+                unsupported_model_behavior="warn",
+            )
+        ],
+
         debug=True
         
     )
