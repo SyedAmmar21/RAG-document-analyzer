@@ -6,7 +6,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.x-005571?style=flat-square&logo=elasticsearch)](https://www.elastic.co)
 [![DeepAgents](https://img.shields.io/badge/DeepAgents-Agent_Framework-blue?style=flat-square)](https://github.com/langchain-ai/deepagents)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT_&_Embeddings-412991?style=flat-square&logo=openai)](https://openai.com)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT-000000?style=flat-square&logo=openai)](https://openai.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python)](https://python.org)
 [![Modal](https://img.shields.io/badge/Modal-1.5.0+-7C3AED?style=flat-square)](https://modal.com)
 
@@ -29,24 +29,25 @@ Instead of treating the assistant as a simple one-shot RAG chatbot, the current 
 
 ---
 
-# New CLI Functions
+# Modal sandbox & OfficeCLI
 
-The project now includes three convenient command‑line utilities:
+The project provides Modal-based sandboxing and OfficeCLI integration for running potentially risky or heavy tasks in an isolated environment, plus Modal functions for background jobs.
 
-- **Sandbox mode** – `python -m backend.sandbox run <script>`
-  Executes Python scripts in an isolated virtual environment with limited filesystem access, preventing side‑effects on the host system.
+- Modal sandbox (programmatic)
+  - Implementation: backend/app/services/modal_sandbox_service.py and backend/app/services/sandbox/*
+  - Enable the sandbox with USE_MODAL_SANDBOX=true in the backend environment.
+  - The sandbox is exposed to Deep Agents via a thread-scoped backend; the frontend provides a stable thread_id per chat session (see docs/modal_sandbox_phase2.md).
+  - Tools available inside the sandbox include execute, read_file, write_file, edit_file, ls, glob, grep and OfficeCLI when configured.
 
-- **Modal integration** – `modal deploy` / `modal run <function>`
-  Deploys heavy‑weight background jobs (e.g., embedding generation, large retrieval tasks) to Modal’s serverless platform directly from the repo.
+- Modal integration — `modal deploy` / `modal run <function>`
+  - Use Modal to deploy or execute serverless functions (embedding jobs, export adapters, OfficeCLI helpers).
 
-- **Office CLI** – `office-cli <command>`
-  Provides quick access to common administrative tasks:
-  - `office-cli start` – launches the FastAPI backend and React frontend together.
-  - `office-cli stop` – stops all Docker containers.
-  - `office-cli restart` – restarts the development environment.
-  - `office-cli logs` – streams logs from the backend, frontend, and Elasticsearch services.
+- OfficeCLI (document generation)
+  - OfficeCLI is used inside the Modal sandbox for creating PPTX/DOCX/XLSX/PDF exports.
+  - Generated files must be written to /workspace/output inside the sandbox; the backend can retrieve completed outputs.
+  - Follow the OfficeCLI skill files in backend/app/skills/ for guidance the agent uses when generating documents.
 
-These tools streamline development, testing, and production workflows while keeping the local environment clean.
+These features let the Deep Agent run heavy or side-effecting operations safely and audibly while keeping the local development environment isolated.
 
 
 # Key Features
@@ -253,7 +254,8 @@ Storage:
   -> Research memory Markdown file
 
 External APIs:
-  -> OpenAI for LLM and embeddings
+  -> OpenAI (GPT-5.4-nano for chat; text-embedding-3-small for embeddings) — default for embeddings and many LLM calls
+  -> AWS Bedrock (Claude Haiku) — optional/alternative LLM path when configured via environment and langchain_aws
   -> Tavily for news retrieval
 ```
 
@@ -278,8 +280,8 @@ External APIs:
 | Database | SQLite |
 | Vector DB | Elasticsearch 8.x |
 | Agent Framework | DeepAgents + LangChain |
-| Embeddings | OpenAI embeddings |
-| LLM | `gpt-5.4-nano` |
+| Embeddings | OpenAI text-embedding-3-small |
+| LLM | OpenAI GPT-5.4-nano (Bedrock/Claude supported as an alternative) |
 | News Retrieval | Tavily API |
 | Document Parsing | `pypdf`, `python-docx` |
 | Scheduling | APScheduler |
