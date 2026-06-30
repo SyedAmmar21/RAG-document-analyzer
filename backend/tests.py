@@ -1,22 +1,30 @@
-from app.services.modal_sandbox_service import ModalSandboxService
+from app.services.sandbox.session_store import (
+    get_backend,
+    set_current_document,
+    get_current_document,
+    WorkingDocument,
+)
 
-service = ModalSandboxService()
-backend = service.create_sandbox()
+THREAD_ID = "memory-test"
 
-commands = [
-    "export PATH=/root/.local/bin:$PATH && dotnet --info",
-    "export PATH=/root/.local/bin:$PATH && officecli --version",
-    "export PATH=/root/.local/bin:$PATH && officecli help pptx",
-    "export PATH=/root/.local/bin:$PATH && officecli create /workspace/output/test.pptx",
-    "export PATH=/root/.local/bin:$PATH && ls -lah /workspace/output",
-]
+# Create a sandbox session
+get_backend(THREAD_ID)
 
-for cmd in commands:
-    print("\n" + "=" * 80)
-    print(cmd)
-    print("=" * 80)
+# Store a document
+set_current_document(
+    THREAD_ID,
+    WorkingDocument(
+        filename="gold.pptx",
+        path="/workspace/output/gold.pptx",
+        file_type="pptx",
+    ),
+)
 
-    result = backend.execute(cmd)
+# Read it back
+document = get_current_document(THREAD_ID)
 
-    print("Exit code:", result.exit_code)
-    print(result.output)
+print(document)
+print(document.filename)
+print(document.path)
+print(document.file_type)
+print(get_current_document("another-thread"))

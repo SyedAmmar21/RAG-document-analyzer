@@ -9,11 +9,12 @@ from collections import defaultdict
 from app.services.retrieval_service import search_documents
 from app.services.memory_retrieval_service import get_memory_content
 from langchain_aws.middleware.prompt_caching import BedrockPromptCachingMiddleware
-
+from langgraph.checkpoint.memory import MemorySaver
 
 # ========================================
 # HELPER FUNCTIONS
 # ========================================
+memory_checkpointer = MemorySaver()
 
 def clean_chunk_text(text: str) -> str:
     """
@@ -755,6 +756,7 @@ def get_deep_rag_agent(
         ],
         
         memory=["app/memory/research_history.md"],
+        checkpointer=memory_checkpointer,
         system_prompt="""
 You are an expert document analyst and strategic research agent.
 

@@ -15,18 +15,25 @@ from dataclasses import dataclass
 from langchain_modal import ModalSandbox
 
 from app.services.modal_sandbox_service import ModalSandboxService
-
+from dataclasses import dataclass
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 IDLE_TIMEOUT_SECONDS = 3600
 
+@dataclass
+class WorkingDocument:
+    filename: str
+    path: str
+    file_type: str
 
 @dataclass
 class SandboxSession:
     backend: ModalSandbox
     service: ModalSandboxService
     last_used: float
+    current_document: Optional[WorkingDocument] = None
 
 
 _sessions: dict[str, SandboxSession] = {}
@@ -112,3 +119,23 @@ def cleanup_idle() -> None:
                 "Failed to clean up idle Modal sandbox for thread_id=%s",
                 thread_id,
             )
+
+def set_current_document(thread_id: str, document: WorkingDocument) -> None:
+    """Store the current working document for a thread."""
+
+    with _sessions_lock:
+        session = _sessions.get(thread_id)
+        if session is not None:
+            session.current_document = document
+
+
+def get_current_document(thread_id: str) -> WorkingDocument | None:
+    """Return the current working document for a thread."""
+
+    with _sessions_lock:
+        session = _sessions.get(thread_id)
+
+        if session is None:
+            return None
+
+        return session.current_document
