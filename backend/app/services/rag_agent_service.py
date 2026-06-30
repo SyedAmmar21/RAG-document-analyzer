@@ -695,6 +695,34 @@ The following information comes from prior completed research analyses.
             f"output_dir_listing={output_listing.output}"
         )
     
+    @tool
+    def get_current_document() -> str:
+        """
+
+        Return the active Office document for the current conversation.
+
+        Use this tool ONLY when the user wants to edit, update, revise,
+        continue, append to, shorten, expand, or otherwise modify an
+        existing Office document.
+
+        Do NOT use this tool when creating a completely new document.
+
+        """
+
+        from app.services.sandbox.session_store import get_current_document
+
+        document = get_current_document(thread_id)
+
+        if document is None:
+            return "No current working document exists."
+
+        return (
+            f"Current document:\n"
+            f"Filename: {document.filename}\n"
+            f"Type: {document.file_type}\n"
+            f"Path: {document.path}"
+        )
+        
 
     # Return all tools for the agent
     return [
@@ -705,7 +733,8 @@ The following information comes from prior completed research analyses.
         risk_analysis_tool,
         deep_research_tool,
         research_memory_tool,
-        sandbox_execute
+        sandbox_execute,
+        get_current_document
     ]
 
 def get_deep_rag_agent(
@@ -790,6 +819,17 @@ MEMORY:
   remembered insights, prior analyses, historical findings, or what was
   concluded before.
 
+WORKING DOCUMENT STATE:
+- get_current_document: Use when the user asks to edit, modify, update,
+  revise, continue, append, shorten, expand, reformat, or otherwise
+  change a previously generated Office document.
+- Call this tool before performing document modifications unless the
+  user explicitly provides a different document.
+- If a current working document exists, modify that document instead
+  of creating a new one.
+- If no current working document exists, inform the user and ask them
+  to generate or specify a document first.  
+
 DOCUMENT GENERATION:
 When the user asks to create, generate, or export any document
 (PowerPoint presentation, Word report, Excel spreadsheet, PDF):
@@ -833,6 +873,15 @@ For analytical questions, use a systematic approach:
 
 5. CONCLUDE: Present findings with clear source attribution
 
+6. DOCUMENT MODIFICATION (only when editing existing Office documents):
+   - Determine whether the user wants to modify an existing document
+     rather than create a new one.
+   - Call get_current_document to identify the active working document.
+   - If a document exists, open and modify that document using
+     OfficeCLI.
+   - Preserve the existing content unless the user explicitly requests
+     replacement.
+
 ========================================
 QUALITY STANDARDS
 ========================================
@@ -866,6 +915,12 @@ QUALITY STANDARDS
    - Don't over-retrieve (use appropriate top_k)
    - Avoid redundant tool calls
    - Use specialized tools before synthesis
+
+6. DOCUMENT CONTINUITY
+   - Reuse the current working Office document whenever the user's
+     request is a continuation or revision.
+   - Avoid creating duplicate documents when an existing working
+     document can be updated instead.
 
 ========================================
 STRATEGIC INSIGHTS
