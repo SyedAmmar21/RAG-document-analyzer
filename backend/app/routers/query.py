@@ -9,13 +9,16 @@ from app.services.document_service import add_ai_response
 from app.services.domain_service import get_documents_by_domain
 from app.services.sandbox.session_store import get_backend
 
-from app.services.news_ingestion_service import search_gold_news
-from app.services.news_ingestion_service import extract_article_text
-from app.services.news_ingestion_service import save_article_as_txt
 from app.services.memory_service import (
     create_memory_entry,
     save_memory_entry
 )
+
+from app.services.sandbox.session_store import (
+    set_current_document,
+    WorkingDocument,
+)
+from app.services.sandbox.session_store import get_current_document
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -153,8 +156,21 @@ async def query_agent(request: QueryRequest):
                         out_path = out_dir / filename
                         out_path.write_bytes(results[0].content)
                         downloaded_urls.append(f"/download/{filename}")
-                        # Clear file from sandbox after download
-                        sandbox_backend.execute(f"rm /workspace/output/{filename}")
+
+                        extension = Path(filename).suffix.lower()
+
+                        if extension in {".pptx", ".docx", ".xlsx"}:
+                            set_current_document(
+                                request.thread_id,
+                                WorkingDocument(
+                                    filename=filename,
+                                    path=f"/workspace/output/{filename}",
+                                    file_type=extension[1:],  # pptx/docx/xlsx
+                                ),
+                            )
+                        
+                        # Keep generated files in the sandbox so they can be edited
+                        # sandbox_backend.execute(f"rm /workspace/output/{filename}")
                 if downloaded_urls:
                     response["download_urls"] = downloaded_urls
         except Exception as e:
@@ -268,12 +284,6 @@ Rules:
 
         # Extract answer only after successful invoke
         answer = response["messages"][-1].content
-
-        print("\n===== AGENT RESPONSE DEBUG =====")
-        print(f"Model: {response['messages'][-1].response_metadata.get('model_name', 'unknown')}")
-        print(f"Total messages: {len(response['messages'])}")
-        print(f"Answer preview: {answer[:200]}...")
-        print("================================\n")
 
         add_ai_response(
             document_id=request.document_id,

@@ -1,30 +1,10 @@
-from app.services.sandbox.session_store import (
-    get_backend,
-    set_current_document,
-    get_current_document,
-    WorkingDocument,
-)
+from app.services.sandbox.session_store import get_backend
 
-THREAD_ID = "memory-test"
+THREAD_ID = "the_same_thread_id_you_used"
 
-# Create a sandbox session
-get_backend(THREAD_ID)
+backend = get_backend(THREAD_ID)
 
-# Store a document
-set_current_document(
-    THREAD_ID,
-    WorkingDocument(
-        filename="gold.pptx",
-        path="/workspace/output/gold.pptx",
-        file_type="pptx",
-    ),
-)
+result = backend.execute("ls -lah /workspace/output")
 
-# Read it back
-document = get_current_document(THREAD_ID)
-
-print(document)
-print(document.filename)
-print(document.path)
-print(document.file_type)
-print(get_current_document("another-thread"))
+print(result.exit_code)
+print(result.output)

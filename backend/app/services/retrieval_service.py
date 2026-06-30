@@ -58,13 +58,6 @@ def search_documents(
 
     hits = response["hits"]["hits"]
 
-    print("\n===== SEARCH DEBUG =====")
-    print("QUERY:", query)
-    print("DOCUMENT ID:", document_id)
-    print("DOCUMENT IDS:", document_ids)
-    print("HITS:", len(hits))
-    print("========================\n")
-
     # Extract structured results
 
     results = []
