@@ -1,3 +1,8 @@
+---
+name: comparative-analysis
+description: Compare viewpoints, documents, and evidence.
+---
+
 # Comparative Analysis Skill
 
 When a user asks to:

@@ -1,3 +1,8 @@
+---
+name: memory-aware-analysis
+description: Perform memory-aware analysis of documents and evidence.
+---
+
 # Memory-Aware Analysis
 
 When performing:

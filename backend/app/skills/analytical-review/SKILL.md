@@ -1,3 +1,8 @@
+---
+name: analytical-review
+description: Perform structured analytical reviews.
+---
+
 # Analytical Review Skill
 
 ## Purpose

@@ -1,3 +1,8 @@
+---
+name: retrieval-strategy
+description: Best practices for retrieving evidence from documents.
+---
+
 # Retrieval Strategy Skill
 
 ## Purpose

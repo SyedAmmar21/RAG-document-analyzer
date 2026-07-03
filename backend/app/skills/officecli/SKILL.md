@@ -1,3 +1,8 @@
+---
+name: officecli
+description: Generate and modify Office documents using OfficeCLI.
+---
+
 # OfficeCLI Integration For RAG Document Analyzer
 
 When the user asks to generate, create, export, or modify an Office document, use OfficeCLI through the `sandbox_execute` tool running inside the Modal Sandbox.

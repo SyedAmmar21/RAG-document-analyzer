@@ -10,6 +10,7 @@ from app.services.retrieval_service import search_documents
 from app.services.memory_retrieval_service import get_memory_content
 from langchain_aws.middleware.prompt_caching import BedrockPromptCachingMiddleware
 from langgraph.checkpoint.memory import MemorySaver
+from deepagents.backends.filesystem import FilesystemBackend
 
 # ========================================
 # HELPER FUNCTIONS
@@ -773,16 +774,14 @@ def get_deep_rag_agent(
         thread_id=thread_id
     )
 
+    backend = FilesystemBackend(root_dir="/app")
+
     agent = create_deep_agent(
         model=llm,
         tools=tools,
-        
+        backend=backend,
         skills=[
-            "app/skills/retrieval_strategy.md",
-            "app/skills/analytical_review.md",
-            "app/skills/comparative_analysis.md",
-            "app/skills/memory_aware_analysis.md",
-            "app/skills/Officecli_skill.md"
+            "app/skills"
         ],
         
         memory=["app/memory/research_history.md"],
