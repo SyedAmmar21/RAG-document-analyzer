@@ -776,12 +776,13 @@ def get_deep_rag_agent(
     agent = create_deep_agent(
         model=llm,
         tools=tools,
+        
         skills=[
             "app/skills/retrieval_strategy.md",
             "app/skills/analytical_review.md",
             "app/skills/comparative_analysis.md",
             "app/skills/memory_aware_analysis.md",
-            "app/skills/officecli_skill.md"
+            "app/skills/Officecli_skill.md"
         ],
         
         memory=["app/memory/research_history.md"],
