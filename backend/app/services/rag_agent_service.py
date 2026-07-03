@@ -2,6 +2,7 @@ from multiprocessing import context
 from langchain.tools import tool
 from deepagents import create_deep_agent
 from langchain_aws import ChatBedrockConverse
+import json
 import re
 import os
 from collections import defaultdict
@@ -231,6 +232,21 @@ DOCUMENT: {doc_display_name}
 
 
 def create_tools(llm, document_id=None, document_ids=None, thread_id="default"):
+    def _get_output_file_state(backend) -> dict[str, str]:
+        state_command = (
+            "find /workspace/output -maxdepth 1 -type f "
+            "-printf '%f\\t%TY-%Tm-%Td %TH:%TM:%TS\\n' 2>/dev/null || true"
+        )
+        result = backend.execute(state_command)
+        file_state = {}
+
+        for line in result.output.splitlines():
+            if not line.strip() or "\t" not in line:
+                continue
+            filename, modified_at = line.split("\t", 1)
+            file_state[filename.strip()] = modified_at.strip()
+
+        return file_state
 
     # TOOL 1: SEARCH DOCUMENTS
 
@@ -675,12 +691,16 @@ The following information comes from prior completed research analyses.
             exit_code and output from the command
         """
         import os
-        from app.services.sandbox.session_store import get_backend as _get_backend
+        from app.services.sandbox.session_store import (
+            get_backend as _get_backend,
+            record_output_files,
+        )
 
         if os.getenv("USE_MODAL_SANDBOX", "false").lower() != "true":
             return "exit_code=1\noutput=Sandbox is disabled (USE_MODAL_SANDBOX=false)"
 
         backend = _get_backend(thread_id)
+        output_state_before = _get_output_file_state(backend)
 
         # OfficeCLI is installed in /root/.local/bin inside Modal sandboxes.
         # Ensure it is available on PATH for every command.
@@ -688,12 +708,24 @@ The following information comes from prior completed research analyses.
 
         print(f"EXECUTING: {command}")
         result = backend.execute(command)
-        output_listing = backend.execute("ls -1 /workspace/output 2>/dev/null || true")
+        output_state_after = _get_output_file_state(backend)
+        changed_output_files = [
+            filename
+            for filename, modified_at in output_state_after.items()
+            if output_state_before.get(filename) != modified_at
+        ]
+
+        if changed_output_files:
+            record_output_files(
+                thread_id,
+                [f"/workspace/output/{filename}" for filename in changed_output_files],
+            )
 
         return (
             f"exit_code={result.exit_code}\n"
             f"output={result.output}\n"
-            f"output_dir_listing={output_listing.output}"
+            f"output_dir_listing={chr(10).join(sorted(output_state_after.keys()))}\n"
+            f"tracked_output_files={json.dumps(sorted(changed_output_files))}"
         )
     
     @tool

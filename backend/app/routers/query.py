@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from app.services.rag_agent_service import get_deep_rag_agent
 from app.services.document_service import add_ai_response
 from app.services.domain_service import get_documents_by_domain
-from app.services.sandbox.session_store import get_backend
 
 from app.services.memory_service import (
     create_memory_entry,
@@ -15,10 +14,11 @@ from app.services.memory_service import (
 )
 
 from app.services.sandbox.session_store import (
+    consume_output_files,
+    get_existing_backend,
     set_current_document,
     WorkingDocument,
 )
-from app.services.sandbox.session_store import get_current_document
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -141,10 +141,10 @@ async def query_agent(request: QueryRequest):
 
         # Post-invoke: download any files the agent generated in sandbox
         try:
-            sandbox_backend = get_backend(request.thread_id)
-            check = sandbox_backend.execute("ls /workspace/output/ 2>/dev/null")
-            if check.exit_code == 0 and check.output.strip():
-                filenames = [f.strip() for f in check.output.strip().split("\n") if f.strip()]
+            filenames = consume_output_files(request.thread_id)
+            sandbox_backend = get_existing_backend(request.thread_id)
+
+            if sandbox_backend is not None and filenames:
                 downloaded_urls = []
                 for filename in filenames:
                     results = sandbox_backend.download_files(
