@@ -675,9 +675,14 @@ The following information comes from prior completed research analyses.
 
         Always:
         - Create output directory first: mkdir -p /workspace/output
-        - IMPORTANT FOR NEW FILES: 'officecli batch' expects the target file to exist. 
-          If creating a brand new presentation, you MUST initialize an empty file 
-          using 'touch /workspace/output/<filename>.pptx' before running officecli.
+
+        - IMPORTANT FOR NEW OFFICE DOCUMENTS:
+          For a brand new Office document (.pptx, .docx, .xlsx):
+          1. Create the Office document first using: officecli create /workspace/output/<filename>.<extension>
+          2. After the document exists, use OfficeCLI batch commands to populate or edit it.
+          3. Never use `touch` to create Office documents. A touched file is a 0-byte file and is not a valid Office document.
+          4. If editing an existing Office document, do NOT recreate it. Modify the existing document directly.
+          
         - Save files to /workspace/output/<filename>.<format>
         - Check exit_code == 0 in the response before continuing
         - Follow the OfficeCLI skill file for exact command sequences

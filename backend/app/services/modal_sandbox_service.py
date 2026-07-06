@@ -118,7 +118,11 @@ class ModalSandboxService:
             self._sandbox = modal.Sandbox.create(
                 app=self._modal_app,
                 image=image,
+                timeout=1800,         
+                idle_timeout=1800, 
+
             )
+
             logger.info("Modal sandbox created successfully.")
             return ModalSandbox(sandbox=self._sandbox)
         except Exception as exc:  
