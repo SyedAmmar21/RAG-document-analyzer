@@ -1,4 +1,4 @@
-from urllib import request
+import asyncio
 import logging
 from pathlib import Path
 
@@ -22,6 +22,28 @@ from app.services.sandbox.session_store import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _download_sandbox_file_bytes(sandbox_backend, sandbox_path: str) -> bytes | None:
+    """
+    Download a sandbox file while preferring Modal's newer filesystem API.
+
+    Falls back to LangChain's wrapper method for compatibility with older
+    backends that do not expose the underlying filesystem interface.
+    """
+    raw_sandbox = getattr(sandbox_backend, "_sandbox", None)
+    filesystem = getattr(raw_sandbox, "filesystem", None)
+
+    if filesystem is not None:
+        read_bytes = getattr(filesystem, "read_bytes", None)
+        if callable(read_bytes):
+            return read_bytes(sandbox_path)
+
+    results = sandbox_backend.download_files([sandbox_path])
+    if results and results[0].content is not None:
+        return results[0].content
+
+    return None
 
 
 # Request schema
@@ -119,7 +141,8 @@ async def query_agent(request: QueryRequest):
 
     # Run agent with error handling
     try:
-        response = agent.invoke(
+        response = await asyncio.to_thread(
+            agent.invoke,
             {
                 "messages": [
                     {
@@ -128,7 +151,6 @@ async def query_agent(request: QueryRequest):
                     }
                 ]
             },
-
             config={
                 # Recursion limit for multi-step planning with specialized tools.
                 # Each tool call + reasoning step counts as 1 recursion iteration.
@@ -147,14 +169,16 @@ async def query_agent(request: QueryRequest):
             if sandbox_backend is not None and filenames:
                 downloaded_urls = []
                 for filename in filenames:
-                    results = sandbox_backend.download_files(
-                        [f"/workspace/output/{filename}"]
+                    content = await asyncio.to_thread(
+                        _download_sandbox_file_bytes,
+                        sandbox_backend,
+                        f"/workspace/output/{filename}",
                     )
-                    if results and results[0].content is not None:
+                    if content is not None:
                         out_dir = Path("storage/outputs")
                         out_dir.mkdir(parents=True, exist_ok=True)
                         out_path = out_dir / filename
-                        out_path.write_bytes(results[0].content)
+                        out_path.write_bytes(content)
                         downloaded_urls.append(f"/download/{filename}")
 
                         extension = Path(filename).suffix.lower()
@@ -263,7 +287,8 @@ Rules:
 
     # Run agent with error handling
     try:
-        response = agent.invoke(
+        response = await asyncio.to_thread(
+            agent.invoke,
             {
                 "messages": [
                     {
@@ -272,7 +297,6 @@ Rules:
                     }
                 ]
             },
-
             config={
                 # Recursion limit for multi-step planning with specialized tools.
                 "recursion_limit": 25,
