@@ -811,7 +811,9 @@ def get_deep_rag_agent(
         thread_id=thread_id
     )
 
-    backend = FilesystemBackend(root_dir="/app")
+    # Preserve current FilesystemBackend path behavior explicitly so future
+    # deepagents upgrades do not silently change semantics.
+    backend = FilesystemBackend(root_dir="/app", virtual_mode=False)
 
     agent = create_deep_agent(
         model=llm,
