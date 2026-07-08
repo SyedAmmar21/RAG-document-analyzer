@@ -11,7 +11,14 @@ from app.services.retrieval_service import search_documents
 from app.services.memory_retrieval_service import get_memory_content
 from langchain_aws.middleware.prompt_caching import BedrockPromptCachingMiddleware
 from langgraph.checkpoint.memory import MemorySaver
-from deepagents.backends.filesystem import FilesystemBackend
+from deepagents.backends import (
+    FilesystemBackend,
+    CompositeBackend,
+    StoreBackend,
+)
+
+from langgraph.store.redis import RedisStore
+from redis import Redis
 
 # ========================================
 # HELPER FUNCTIONS
@@ -760,6 +767,21 @@ The following information comes from prior completed research analyses.
             f"Type: {document.file_type}\n"
             f"Path: {document.path}"
         )
+    
+    @tool
+    def inspect_runtime() -> str:
+        """Debug the runtime passed to StoreBackend."""
+
+        from langgraph.runtime import get_runtime
+
+        rt = get_runtime()
+
+        return (
+            f"type={type(rt)}\n"
+            f"attrs={dir(rt)}\n"
+            f"config={getattr(rt, 'config', None)}\n"
+            f"context={getattr(rt, 'context', None)}\n"
+        )
         
 
     # Return all tools for the agent
@@ -772,7 +794,8 @@ The following information comes from prior completed research analyses.
         deep_research_tool,
         research_memory_tool,
         sandbox_execute,
-        get_current_document
+        get_current_document,
+        inspect_runtime
     ]
 
 def get_deep_rag_agent(
@@ -811,8 +834,13 @@ def get_deep_rag_agent(
         thread_id=thread_id
     )
 
+    redis_client = Redis.from_url(
+        os.getenv("REDIS_URL", "redis://rag-redis:6379")
+    )
+
+    redis_store = RedisStore(redis_client)
+
     # Preserve current FilesystemBackend path behavior explicitly so future
-    # deepagents upgrades do not silently change semantics.
     backend = FilesystemBackend(root_dir="/app", virtual_mode=False)
 
     agent = create_deep_agent(
