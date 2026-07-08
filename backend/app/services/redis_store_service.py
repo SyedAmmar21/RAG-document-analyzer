@@ -30,3 +30,30 @@ def get_redis_store() -> RedisStore:
         _redis_store = store
 
     return _redis_store
+
+from uuid import uuid4
+from datetime import datetime, timezone
+
+def save_research_memory(
+    query: str,
+    summary: str,
+):
+    """
+    Save a research memory into Redis.
+
+    Each memory is stored as its own item so it can later be searched,
+    filtered, or retrieved independently.
+    """
+
+    store = get_redis_store()
+
+    store.put(
+        ("memories",),
+        str(uuid4()),
+        {
+            "query": query,
+            "summary": summary,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "type": "research_memory",
+        },
+    )

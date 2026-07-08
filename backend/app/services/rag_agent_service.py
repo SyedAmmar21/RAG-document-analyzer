@@ -17,8 +17,7 @@ from deepagents.backends import (
     StoreBackend,
 )
 
-from langgraph.store.redis import RedisStore
-from redis import Redis
+from app.services.redis_store_service import get_redis_store
 
 # ========================================
 # HELPER FUNCTIONS
@@ -834,19 +833,29 @@ def get_deep_rag_agent(
         thread_id=thread_id
     )
 
-    redis_client = Redis.from_url(
-        os.getenv("REDIS_URL", "redis://rag-redis:6379")
-    )
-
-    redis_store = RedisStore(redis_client)
+    redis_store = get_redis_store()
 
     # Preserve current FilesystemBackend path behavior explicitly so future
-    backend = FilesystemBackend(root_dir="/app", virtual_mode=False)
+    filesystem_backend = FilesystemBackend(root_dir="/app", virtual_mode=False,)
+    memory_backend = StoreBackend(
+        store=redis_store,
+        namespace=lambda runtime: ("memories",),
+    )
+
+    backend = CompositeBackend(
+        filesystem_backend,
+        {
+            "/memories/": memory_backend,
+        },
+    )
+
+    print("Redis store:", type(redis_store))
 
     agent = create_deep_agent(
         model=llm,
         tools=tools,
         backend=backend,
+        store=redis_store,
         skills=[
             "app/skills"
         ],
