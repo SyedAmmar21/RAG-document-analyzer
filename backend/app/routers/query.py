@@ -20,6 +20,8 @@ from app.services.sandbox.session_store import (
     WorkingDocument,
 )
 
+from app.services.redis_store_service import search_research_memories
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -138,7 +140,69 @@ async def query_agent(request: QueryRequest):
             document_id=request.document_id,
             thread_id=request.thread_id
         )
+    # ========================================
+    # PRELOAD REDIS MEMORIES
+    # ========================================
 
+    memory_keywords = [
+        "remember",
+        "memory",
+        "previous",
+        "previously",
+        "before",
+        "earlier",
+        "last time",
+        "historical",
+        "prior",
+        "conclusion",
+        "concluded",
+        "finding",
+        "findings",
+        "research",
+    ]
+
+    user_message = request.query
+
+    if any(keyword in user_message.lower() for keyword in memory_keywords):
+
+        memories = search_research_memories(
+            query=user_message,
+            limit=5,
+        )
+
+        if memories:
+
+            print(f"Loaded {len(memories)} Redis memories.")
+
+            sections = []
+
+            for item in memories:
+                value = item.value
+
+                sections.append(
+                    f"""
+Question:
+{value.get("query")}
+
+Summary:
+{value.get("summary")}
+"""
+                )
+
+            memory_context = (
+                "Previous research memories:\n\n"
+                + "\n\n----------------------\n\n".join(sections)
+            )
+
+            user_message = f"""
+{memory_context}
+
+----------------------------------------
+
+Current user question:
+
+{request.query}
+"""
     # Run agent with error handling
     try:
         response = await asyncio.to_thread(
@@ -147,7 +211,7 @@ async def query_agent(request: QueryRequest):
                 "messages": [
                     {
                         "role": "user",
-                        "content": request.query
+                        "content": user_message
                     }
                 ]
             },
@@ -254,79 +318,3 @@ async def query_agent(request: QueryRequest):
         }
 
 
-@router.post("/field-search")
-async def field_search(request: FieldSearchRequest):
-    fields = [field.strip() for field in request.fields if field.strip()]
-
-    if not fields:
-        return {
-            "answer": "Add at least one field or search key to extract from the document."
-        }
-
-    field_search_thread_id = f"field-search:{request.document_id or uuid4()}"
-    agent = get_deep_rag_agent(request.document_id, thread_id=field_search_thread_id)
-    fields_text = "\n".join(f"- {field}" for field in fields)
-
-    prompt = f"""
-Extract the following requested fields/search keys from the uploaded document:
-
-{fields_text}
-
-Return the answer in Markdown using this structure:
-
-## Extracted Fields
-| Field | Value Found | Evidence / Notes |
-| --- | --- | --- |
-
-Rules:
-- Use the retrieval tools to search the uploaded document.
-- Base every value only on retrieved document content.
-- If a field is not found, write "Not found" and explain briefly.
-- Keep the response concise and structured.
-"""
-
-    # Run agent with error handling
-    try:
-        response = await asyncio.to_thread(
-            agent.invoke,
-            {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            },
-            config={
-                # Recursion limit for multi-step planning with specialized tools.
-                "recursion_limit": 25,
-                "configurable": {
-                    "thread_id": field_search_thread_id
-                }
-            }
-        )
-
-        # Extract answer only after successful invoke
-        answer = response["messages"][-1].content
-
-        add_ai_response(
-            document_id=request.document_id,
-            query=f"Field search: {', '.join(fields)}",
-            response=answer
-        )
-
-        return {
-            "answer": answer
-        }
-    
-    except Exception as e:
-        # Handle any agent errors (GraphRecursionError, LLM errors, etc.)
-        error_message = f"Agent failed: {str(e)}"
-        print(f"\n===== AGENT ERROR =====")
-        print(f"Error type: {type(e).__name__}")
-        print(f"Error message: {str(e)}")
-        print("=====================\n")
-        
-        return {
-            "answer": error_message
-        }

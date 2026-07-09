@@ -57,3 +57,24 @@ def save_research_memory(
             "type": "research_memory",
         },
     )
+
+def search_research_memories(
+    query: str | None = None,
+    limit: int = 10,
+):
+    """
+    Retrieve stored research memories.
+
+    If a query is provided, RedisStore will use its search capability.
+    Otherwise, return the most recent memories.
+    """
+
+    store = get_redis_store()
+
+    results = store.search(
+        ("memories",),
+        query=query,
+        limit=limit,
+    )
+
+    return results

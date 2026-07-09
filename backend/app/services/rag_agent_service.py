@@ -8,7 +8,7 @@ import os
 from collections import defaultdict
 
 from app.services.retrieval_service import search_documents
-from app.services.memory_retrieval_service import get_memory_content
+from app.services.redis_store_service import search_research_memories
 from langchain_aws.middleware.prompt_caching import BedrockPromptCachingMiddleware
 from langgraph.checkpoint.memory import MemorySaver
 from deepagents.backends import (
@@ -646,28 +646,53 @@ Avoid:
     @tool
     def research_memory_tool(query: str):
         """
-        Search previous research findings stored in long-term memory.
+    Retrieve long-term research memories stored in Redis.
 
-        Use this tool when the user asks:
-        - what was concluded previously
-        - previous research
-        - historical findings
-        - remembered insights
-        - prior analyses
+    ALWAYS use this tool BEFORE answering if the user asks about:
+
+    - previous conversations
+    - what we discussed before
+    - what we concluded previously
+    - what you remember
+    - remembered research
+    - previous findings
+    - prior analyses
+    - historical research
+    - "last time"
+    - "earlier"
+    - "before"
+
+    Do NOT answer these questions from conversation memory alone.
+    Always search the stored research memories first.
         """
 
-        memory = get_memory_content()
+        memories = search_research_memories(
+            query=query,
+            limit=5,
+        )
 
-        if not memory.strip():
-            return "No research memory available."
+        if not memories:
+            return "No relevant research memory found."
 
-        return f"""
-PREVIOUS RESEARCH MEMORY
+        output = []
 
-The following information comes from prior completed research analyses.
+        for memory in memories:
+            value = memory.value
 
-{memory}
-"""
+            output.append(
+                f"""
+    Question:
+    {value.get("query")}
+
+    Summary:
+    {value.get("summary")}
+    """
+            )
+
+        return (
+            "PREVIOUS RESEARCH MEMORY\n\n"
+            + "\n\n----------------------\n\n".join(output)
+        )
     
     # TOOL 8: SANDBOX EXECUTE
     @tool
@@ -851,7 +876,7 @@ def get_deep_rag_agent(
 
     print("Redis store:", type(redis_store))
     print(type(backend))
-    print(type(memory_backend))
+    print(type(memory_backend))    
     print(type(filesystem_backend))
 
     agent = create_deep_agent(
