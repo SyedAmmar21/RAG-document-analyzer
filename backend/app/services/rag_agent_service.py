@@ -850,6 +850,9 @@ def get_deep_rag_agent(
     )
 
     print("Redis store:", type(redis_store))
+    print(type(backend))
+    print(type(memory_backend))
+    print(type(filesystem_backend))
 
     agent = create_deep_agent(
         model=llm,

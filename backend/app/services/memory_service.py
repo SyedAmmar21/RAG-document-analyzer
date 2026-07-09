@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-
+from app.services.redis_store_service import save_research_memory
 from langchain_openai import ChatOpenAI
 
 MEMORY_FILE = Path("app/memory/research_history.md")
@@ -90,7 +90,7 @@ Research Output:
 
     return memory_entry
 
-def save_memory_entry(memory_entry: str):
+def save_memory_entry(query: str, memory_entry: str):
     print("MEMORY FILE:", MEMORY_FILE.resolve())
     """
     Append a summarized memory entry to research history.
@@ -112,3 +112,8 @@ Date: {timestamp}
 
 """
         )
+    # Save to Redis as well
+    save_research_memory(
+        query=query,
+        summary=memory_entry,
+    )

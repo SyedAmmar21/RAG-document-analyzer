@@ -225,7 +225,7 @@ async def query_agent(request: QueryRequest):
             )
 
             if memory_entry:
-                save_memory_entry(memory_entry)
+                save_memory_entry(query=request.query,memory_entry=memory_entry,)
                 print("Memory saved successfully.") 
 
         except Exception as memory_error:
