@@ -1,463 +1,386 @@
 # Adaptive Domain-Aware RAG Platform
 
-> A full-stack intelligent document research system with adaptive semantic domains, hybrid embeddings, automated news ingestion, and a Deep Agent that can use skills, tools, and long-term research memory.
+Full-stack research workspace for gold-market documents and news. The app ingests files, extracts metadata, indexes chunks into Elasticsearch, assigns each document into semantic folders, and answers scoped questions through a Deep Agent with Redis-backed memory and optional Modal sandbox tooling.
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.136+-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev)
-[![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.x-005571?style=flat-square&logo=elasticsearch)](https://www.elastic.co)
-[![DeepAgents](https://img.shields.io/badge/DeepAgents-Agent_Framework-blue?style=flat-square)](https://github.com/langchain-ai/deepagents)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT-000000?style=flat-square&logo=openai)](https://openai.com)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python)](https://python.org)
-[![Modal](https://img.shields.io/badge/Modal-1.5.0+-7C3AED?style=flat-square)](https://modal.com)
+## What the project does
 
----
+This repository combines:
 
-# Overview
+- A `React + Vite` frontend for chat, document management, metadata review, and semantic folders
+- A `FastAPI` backend for ingestion, retrieval, news ingestion, and agent orchestration
+- `Elasticsearch` for chunk-level vector retrieval
+- `SQLite` for document, metadata, and domain records
+- `Redis` for searchable research memory used by the agent
+- `Tavily + Trafilatura` for fetching and extracting fresh news articles
+- `Modal + OfficeCLI` for isolated document-generation workflows when sandbox mode is enabled
 
-This project is an adaptive Retrieval-Augmented Generation (RAG) platform for document and news-based research. It combines:
+The current UI and backend are tailored around a gold research workflow, but the architecture is general RAG infrastructure with domain-aware organization.
 
-- Document ingestion and text extraction
-- LLM-powered metadata extraction
-- Hybrid semantic embeddings
-- Elasticsearch vector retrieval
-- Adaptive domain assignment through learned centroids
-- A Deep Agent for multi-step research and reasoning
-- Skill-guided tool selection
-- Long-term research memory for important findings
+## Core features
 
-Instead of treating the assistant as a simple one-shot RAG chatbot, the current system uses a Deep Agent that can plan, choose specialized tools, analyze evidence from different angles, synthesize findings, and store useful research summaries for later context.
+### 1. Document upload and ingestion
 
----
+Supported upload types:
 
-# Modal sandbox & OfficeCLI
+- `PDF`
+- `DOCX`
+- `TXT`
 
-The project provides Modal-based sandboxing and OfficeCLI integration for running potentially risky or heavy tasks in an isolated environment, plus Modal functions for background jobs.
+When a file is uploaded to `/ingest`, the backend:
 
-- Modal sandbox (programmatic)
-  - Implementation: backend/app/services/modal_sandbox_service.py and backend/app/services/sandbox/*
-  - Enable the sandbox with USE_MODAL_SANDBOX=true in the backend environment.
-  - The sandbox is exposed to Deep Agents via a thread-scoped backend; the frontend provides a stable thread_id per chat session (see docs/modal_sandbox_phase2.md).
-  - Tools available inside the sandbox include execute, read_file, write_file, edit_file, ls, glob, grep and OfficeCLI when configured.
+1. validates size and extension
+2. checks for duplicates by original upload name
+3. saves the file under `backend/storage/uploads`
+4. extracts raw text
+5. extracts metadata
+6. chunks and embeds the text
+7. indexes chunks into Elasticsearch
+8. generates a document-level hybrid embedding
+9. assigns the document into the best semantic folder/domain
 
-- Modal integration — `modal deploy` / `modal run <function>`
-  - Use Modal to deploy or execute serverless functions (embedding jobs, export adapters, OfficeCLI helpers).
+Key files:
 
-- OfficeCLI (document generation)
-  - OfficeCLI is used inside the Modal sandbox for creating PPTX/DOCX/XLSX/PDF exports.
-  - Generated files must be written to /workspace/output inside the sandbox; the backend can retrieve completed outputs.
-  - Follow the OfficeCLI skill files in backend/app/skills/ for guidance the agent uses when generating documents.
+- [backend/app/routers/ingest.py](backend/app/routers/ingest.py)
+- [backend/app/services/document_ingestion_service.py](backend/app/services/document_ingestion_service.py)
+- [backend/app/services/file_service.py](backend/app/services/file_service.py)
+- [backend/app/services/text_extraction_service.py](backend/app/services/text_extraction_service.py)
 
-These features let the Deep Agent run heavy or side-effecting operations safely and audibly while keeping the local development environment isolated.
+### 2. Metadata extraction
 
+Metadata extraction is a hybrid of rule-based parsing and LLM extraction.
 
-# Key Features
+Fields currently used:
 
-## Intelligent Document Ingestion
+- `title`
+- `published_date`
+- `focus`
+- `entities`
+- `economic_indicators`
+- `regions`
 
-Supported formats:
+How it works:
 
-- PDF
-- DOCX
-- TXT
-- Markdown
+- `published_date`, entity mentions, regions, and economic indicators are first detected with regex/rule-based logic
+- `ChatOpenAI` is then used to infer higher-level semantic metadata such as title/focus and enrich the lists
+- the merged metadata is stored in SQLite and shown in the frontend metadata review modal
 
-Ingestion flow:
+Key file:
 
-```text
-Upload
-  -> Text extraction
-  -> Metadata extraction
-  -> Chunking
-  -> Hybrid embedding generation
-  -> Elasticsearch indexing
-  -> Adaptive domain assignment
-  -> Domain centroid update
-```
+- [backend/app/services/metadata_extraction_service.py](backend/app/services/metadata_extraction_service.py)
 
-The metadata extraction pipeline identifies titles, keywords, entities, regions, publication details, and contextual summaries. These fields improve retrieval precision and domain classification.
+### 3. Hybrid embeddings
 
-## Automated News Ingestion
+The app does not rely only on raw chunk embeddings. It builds a document-level hybrid embedding:
 
-The backend integrates Tavily for external news retrieval. News articles are fetched, extracted, saved as text, embedded, indexed, and assigned to domains using the same semantic pipeline as uploaded documents.
+- `70%` metadata embedding
+- `30%` centroid of top document chunks
 
-This allows the knowledge base to expand from both user-uploaded files and fresh external sources.
+That hybrid vector is then used for semantic domain assignment.
 
-## Hybrid Embedding Architecture
+Key files:
 
-The platform combines metadata meaning with document content meaning:
+- [backend/app/services/hybrid_embedding_service.py](backend/app/services/hybrid_embedding_service.py)
+- [backend/app/services/document_centroid_service.py](backend/app/services/document_centroid_service.py)
 
-```python
-hybrid_embedding = (metadata_embedding * 0.7) + (chunk_centroid_embedding * 0.3)
-```
+### 4. Elasticsearch vector retrieval
 
-This gives each document a richer semantic representation than content-only chunk embeddings. The hybrid embedding is used for classification, retrieval, and domain centroid updates.
+All searchable document chunks are stored in the `documents` Elasticsearch index as:
 
-## Adaptive Domain Centroids
+- `document_id`
+- `text`
+- `embedding`
 
-Domains are adaptive semantic entities rather than static folders.
+Queries are embedded with `text-embedding-3-small`, then executed as Elasticsearch `knn` search. Query scope can be:
 
-Each domain starts with an embedding from its name and description. As documents are assigned, the domain centroid is recomputed from the assigned documents:
+- global
+- selected folders
+- selected documents
+- legacy single-document mode
 
-```python
-domain_centroid = average(all_hybrid_embeddings_in_domain)
-```
+Key files:
 
-This lets domains learn from the content they contain. Empty domains fall back to their original name/description embedding, while populated domains evolve around the actual documents assigned to them.
+- [backend/app/services/vector_service.py](backend/app/services/vector_service.py)
+- [backend/app/services/retrieval_service.py](backend/app/services/retrieval_service.py)
 
----
+### 5. Semantic folders / adaptive domains
 
-# Deep Agent Architecture
+Folders in the UI are backed by semantic domains in SQLite, not static filesystem folders.
 
-The current query system uses `deepagents.create_deep_agent` through `backend/app/services/rag_agent_service.py`.
+What happens:
 
-The Deep Agent is designed for multi-step analytical research. It can:
+- a domain is created with a name + optional description
+- that text is embedded immediately
+- new documents are matched against stored domain embeddings with cosine similarity
+- once documents are assigned, the domain centroid is recomputed from its assigned documents
 
-- Retrieve direct evidence
-- Summarize relevant documents
-- Compare perspectives across documents
-- Identify trends and recurring themes
-- Assess risks, contradictions, uncertainty, and confidence
-- Synthesize evidence into executive-level conclusions
-- Save important research findings into memory
+This makes folder assignment semantic rather than manual-only. There is also a synthetic fallback folder called `Unorganized Files` for documents with no current domain assignment.
 
-The `/query` endpoint creates the Deep Agent for every user query and scopes retrieval based on the frontend request:
+Key files:
 
-- `global`: search across the whole indexed knowledge base
-- `folders`: resolve selected domain/folder IDs into document IDs
-- `documents`: search only selected documents
-- legacy `document_id`: fallback support for older single-document calls
+- [backend/app/services/domain_service.py](backend/app/services/domain_service.py)
+- [backend/app/services/domain_similarity_service.py](backend/app/services/domain_similarity_service.py)
+- [backend/app/services/domain_centroid_service.py](backend/app/services/domain_centroid_service.py)
+- [backend/app/services/domain_assignment_service.py](backend/app/services/domain_assignment_service.py)
 
-## Deep Agent Skills
+### 6. Deep Agent for question answering
 
-The agent is configured with three local skill files:
+The `/query` route creates a Deep Agent that can answer questions over the selected workspace scope.
 
-| Skill | File | Purpose |
-|------|------|---------|
-| Retrieval Strategy | `backend/app/skills/retrieval_strategy.md` | Teaches the agent when to use quick search versus deep research and how to combine tools. |
-| Analytical Review | `backend/app/skills/analytical_review.md` | Guides structured, evidence-based analysis across documents. |
-| Comparative Analysis | `backend/app/skills/comparative_analysis.md` | Helps compare viewpoints, agreements, disagreements, and source perspectives. |
+Agent behavior in this repo:
 
-These skills act as reusable reasoning instructions. They help the Deep Agent decide which tools to call, when to plan, and how to structure analytical answers.
+- quick retrieval with `search_documents_tool`
+- summarization
+- comparison across documents
+- trend detection
+- risk analysis
+- executive synthesis
+- retrieval of prior research memories from Redis
+- optional sandbox execution for OfficeCLI workflows
 
-## Deep Agent Tools
+The main agent model in the current code is `AWS Bedrock Claude Haiku` via `ChatBedrockConverse`, while some supporting services still use `OpenAI` models for metadata extraction, memory scoring, and embeddings.
 
-The agent currently has six specialized tools:
+Key files:
 
-| Tool | Purpose |
-|------|---------|
-| `search_documents_tool` | Fast Elasticsearch retrieval for factual questions, lookups, and direct evidence. |
-| `summarize_document_tool` | Summarizes relevant retrieved content for overviews and document summaries. |
-| `compare_documents_tool` | Compares documents, viewpoints, forecasts, agreements, disagreements, and unique perspectives. |
-| `identify_trends_tool` | Finds recurring themes, patterns, emerging signals, and trend evidence across documents. |
-| `risk_analysis_tool` | Identifies risks, uncertainty, contradictions, evidence gaps, and confidence signals. |
-| `deep_research_tool` | Synthesizes evidence into executive-level conclusions, implications, opportunities, and recommendations. |
+- [backend/app/routers/query.py](backend/app/routers/query.py)
+- [backend/app/services/rag_agent_service.py](backend/app/services/rag_agent_service.py)
+- [backend/app/skills](backend/app/skills)
 
-For simple factual questions, the agent can call `search_documents_tool` directly. For complex questions, it can use several tools in sequence before producing a final synthesis.
+### 7. Redis-backed long-term research memory
 
-## Deep Agent Memory
+Redis is actively used in this project.
 
-The agent is connected to long-term research memory:
+What it stores:
 
-```text
-backend/app/memory/research_history.md
-```
+- compact summaries of high-value research outputs
+- the original user query
+- timestamped memory items under the `memories` namespace
 
-After a query finishes, `backend/app/services/memory_service.py` evaluates whether the answer deserves long-term storage. It saves only important research outputs such as:
+How it is used:
 
-- Strategic analysis
-- Trends
-- Comparisons
-- Risks
-- Investment insights
-- Executive conclusions
-- Important findings that may be useful later
+- after a query, `memory_service.py` decides whether the answer is important enough to save
+- if yes, the answer is summarized and written to `backend/app/memory/research_history.md`
+- the same summary is also saved into Redis through `RedisStore`
+- when a user asks about previous findings, earlier research, memory, or prior conclusions, the backend preloads matching Redis memories into the agent context
 
-Simple lookups, short Q&A, trivial summaries, and navigation-style questions are skipped.
+Redis is also mounted in Docker via `redis/redis-stack`, which gives both the Redis server and Redis Stack capabilities.
 
-When memory is saved, it is compacted into a short entry containing the topic, key findings, risks, confidence level, and final conclusion. Docker Compose mounts `backend/app/memory` as a persistent volume path so research history survives backend container restarts.
+Key files:
 
-## Query Reasoning Flow
+- [backend/app/services/redis_store_service.py](backend/app/services/redis_store_service.py)
+- [backend/app/services/memory_service.py](backend/app/services/memory_service.py)
 
-```text
-User query
-  -> Frontend sends scope and query to /query
-  -> Backend creates scoped Deep Agent
-  -> Agent reads skills and memory
-  -> Agent selects tools based on intent
-  -> Retrieval tools query Elasticsearch
-  -> Specialized tools analyze evidence
-  -> Deep research tool synthesizes findings when needed
-  -> Final answer is returned with source-grounded reasoning
-  -> Important research outputs are saved to memory
-```
+### 8. Tavily-powered latest news ingestion
 
-The agent is instructed to base conclusions only on retrieved evidence, cite sources explicitly, acknowledge uncertainty, and avoid speculation beyond the documents.
+`Tavily` is one of the main live features in this codebase.
 
----
+The news ingestion flow:
 
-# Retrieval And Evidence Grounding
+1. run several focused gold-market search queries through Tavily
+2. deduplicate articles by canonicalized URL and normalized title
+3. extract article text with `Trafilatura`
+4. fall back to `Tavily Extract` if needed
+5. save the article as a text file under `backend/storage/news_articles`
+6. run the exact same ingestion pipeline used for uploaded documents
+7. assign the article into a semantic domain
+8. return processed / skipped / failed results to the frontend
 
-Retrieval is powered by Elasticsearch and OpenAI embeddings. User queries are embedded, matched against indexed document chunks, and filtered by the selected query scope.
+The frontend exposes this with the `Download Latest Gold News` button and summary modals.
 
-Evidence is cleaned and grouped before analysis:
+Key files:
 
-- Duplicate chunks are removed
-- Boilerplate text is filtered
-- Results are grouped by document
-- Top chunks per document are retained
-- Source document names are preserved for attribution
+- [backend/app/routers/news.py](backend/app/routers/news.py)
+- [backend/app/services/news_ingestion_service.py](backend/app/services/news_ingestion_service.py)
 
-Every analytical answer is expected to include source attribution, confidence notes, and limitations when evidence is incomplete.
+### 9. Scheduled ingestion with APScheduler
 
----
-
-# Frontend Features
-
-The frontend is built with React and Vite.
-
-Current UI capabilities include:
-
-- AI chat interface
-- Global, folder/domain, and document-scoped querying
-- Domain/folder navigation
-- Document upload modal
-- Metadata editor
-- Markdown response rendering
-- Multi-document querying
-- Document repository management
-- Latest gold news ingestion trigger
-
----
-
-# System Architecture
-
-```text
-Frontend: React + Vite
-  -> Chat UI
-  -> Upload and metadata modals
-  -> Domain/folder navigation
-  -> Document repository
-
-Backend: FastAPI
-  -> Routers for ingestion, query, news, and documents
-  -> Deep Agent service
-  -> Retrieval service
-  -> Memory service
-  -> Metadata and extraction services
-  -> Domain assignment and centroid services
-  -> Elasticsearch vector service
-
-Storage:
-  -> SQLite metadata database
-  -> Elasticsearch dense vector index
-  -> Uploaded files and downloaded news articles
-  -> Research memory Markdown file
-
-External APIs:
-  -> OpenAI (GPT-5.4-nano for chat; text-embedding-3-small for embeddings) — default for embeddings and many LLM calls
-  -> AWS Bedrock (Claude Haiku) — optional/alternative LLM path when configured via environment and langchain_aws
-  -> Tavily for news retrieval
-```
-
----
-
-# Tech Stack
-
-## Frontend
-
-| Layer | Technology |
-|------|------------|
-| Framework | React 19 |
-| Build Tool | Vite 8 |
-| Styling | TailwindCSS |
-| Rendering | Markdown renderer |
-
-## Backend
-
-| Layer | Technology |
-|------|------------|
-| Framework | FastAPI |
-| Database | SQLite |
-| Vector DB | Elasticsearch 8.x |
-| Agent Framework | DeepAgents + LangChain |
-| Embeddings | OpenAI text-embedding-3-small |
-| LLM | OpenAI GPT-5.4-nano (Bedrock/Claude supported as an alternative) |
-| News Retrieval | Tavily API |
-| Document Parsing | `pypdf`, `python-docx` |
-| Scheduling | APScheduler |
-| Vector Operations | NumPy / vector math through services |
-
----
-
-# Project Structure
-
-```text
-Internproject2/
-|-- backend/
-|   |-- app/
-|   |   |-- core/
-|   |   |   |-- config.py
-|   |   |   `-- paths.py
-|   |   |-- db/
-|   |   |   |-- database.py
-|   |   |   `-- documents.db
-|   |   |-- memory/
-|   |   |   |-- research_history.md
-|   |   |   `-- research_history_template.md
-|   |   |-- prompts/
-|   |   |   |-- domain_assignment_prompt.py
-|   |   |   `-- metadata_prompt.py
-|   |   |-- routers/
-|   |   |   |-- documents.py
-|   |   |   |-- ingest.py
-|   |   |   |-- news.py
-|   |   |   `-- query.py
-|   |   |-- services/
-|   |   |   |-- document_ingestion_service.py
-|   |   |   |-- document_service.py
-|   |   |   |-- domain_assignment_service.py
-|   |   |   |-- domain_centroid_service.py
-|   |   |   |-- domain_service.py
-|   |   |   |-- domain_similarity_service.py
-|   |   |   |-- extraction_service.py
-|   |   |   |-- file_service.py
-|   |   |   |-- hybrid_embedding_service.py
-|   |   |   |-- memory_service.py
-|   |   |   |-- metadata_extraction_service.py
-|   |   |   |-- metadata_service.py
-|   |   |   |-- news_ingestion_service.py
-|   |   |   |-- rag_agent_service.py
-|   |   |   |-- retrieval_service.py
-|   |   |   |-- scheduler_service.py
-|   |   |   |-- text_extraction_service.py
-|   |   |   `-- vector_service.py
-|   |   `-- skills/
-|   |       |-- analytical_review.md
-|   |       |-- comparative_analysis.md
-|   |       `-- retrieval_strategy.md
-|   |-- storage/
-|   |   |-- news_articles/
-|   |   |-- outputs/
-|   |   `-- uploads/
-|   |-- main.py
-|   |-- pyproject.toml
-|   |-- uv.lock
-|   `-- Dockerfile
-|-- frontend/
-|   |-- src/
-|   |   |-- components/
-|   |   |-- pages/
-|   |   |-- services/
-|   |   |-- App.jsx
-|   |   |-- main.jsx
-|   |   |-- index.css
-|   |   `-- App.css
-|   |-- public/
-|   |-- package.json
-|   |-- vite.config.js
-|   `-- Dockerfile
-`-- docker-compose.yml
-```
-
----
-
-# Detailed System Flow
-
-## Ingestion Phase
-
-```text
-User uploads document or news article is fetched
-  -> Text extraction converts source to raw text
-  -> Metadata extraction identifies semantic context
-  -> Chunking splits document into searchable pieces
-  -> Hybrid embedding service creates document-level representation
-  -> Elasticsearch indexes chunks and vectors
-  -> Domain similarity service compares against adaptive centroids
-  -> Document is assigned to best matching domain
-  -> Domain centroid is recomputed
-```
-
-## Retrieval Phase
-
-```text
-User submits query through chat
-  -> Frontend sends query and retrieval scope
-  -> Backend creates scoped Deep Agent
-  -> Retrieval tool embeds the query
-  -> Elasticsearch returns relevant chunks
-  -> Results are cleaned, deduplicated, grouped, and ranked
-```
-
-## Reasoning Phase
-
-```text
-Deep Agent receives user request
-  -> Reads skill instructions and memory
-  -> Selects the right tool or tool sequence
-  -> Retrieves and analyzes evidence
-  -> Compares, identifies trends, or assesses risks when needed
-  -> Synthesizes final answer
-  -> Stores important research memory when appropriate
-```
-
----
-
-# Deployment And Setup
-
-## Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- Elasticsearch 8.x
-- OpenAI API key
-- Tavily API key for news ingestion
-
-## Environment Configuration
-
-Create `backend/.env`:
+News ingestion is not only manual. The backend starts an `APScheduler` background scheduler on app startup.
+
+Current scheduled behavior:
+
+- daily gold news ingestion
+- runs at `10:00 AM Asia/Kuala_Lumpur`
+- stores the most recent run summary in memory
+- frontend polls `/news/scheduled-summary` every 30 seconds and shows the result once
+
+Key files:
+
+- [backend/main.py](backend/main.py)
+- [backend/app/services/scheduler_service.py](backend/app/services/scheduler_service.py)
+
+### 10. Modal sandbox and OfficeCLI
+
+The project includes an optional isolated sandbox path for document generation and command execution.
+
+What is implemented today:
+
+- a `ModalSandboxService` that creates and terminates Modal sandboxes
+- thread-scoped sandbox reuse, so one chat thread can keep working inside the same sandbox session
+- cleanup of idle sandbox sessions
+- agent tool access through `sandbox_execute`
+- tracking of generated files and downloading them back into `backend/storage/outputs`
+- current-working-document tracking for follow-up edits
+
+When `USE_MODAL_SANDBOX=true`, the agent can run OfficeCLI-oriented commands inside the Modal sandbox to generate or modify:
+
+- `pptx`
+- `docx`
+- `xlsx`
+- `pdf`
+
+There is also a legacy backend export path through `OfficeDocumentService` and `sandbox_service.py` for generated files.
+
+Key files:
+
+- [backend/app/services/modal_sandbox_service.py](backend/app/services/modal_sandbox_service.py)
+- [backend/app/services/sandbox/session_store.py](backend/app/services/sandbox/session_store.py)
+- [backend/app/services/office_document_service.py](backend/app/services/office_document_service.py)
+- [backend/app/services/sandbox_service.py](backend/app/services/sandbox_service.py)
+
+## Frontend features
+
+The frontend is a React workspace with three main tabs:
+
+- `Main`: chat, scope selection, upload flow, latest news download
+- `Repository`: searchable document table with open, metadata, use, and delete actions
+- `Folders`: create/edit/delete semantic folders and inspect the documents inside them
+
+Notable frontend behaviors:
+
+- each chat session gets a stable `thread_id` via `crypto.randomUUID()`
+- users can scope retrieval to selected folders or selected documents
+- duplicate uploads show a dedicated duplicate alert
+- metadata suggestions and domain suggestions are reviewed in a modal after ingestion
+- scheduled news ingestion results are automatically surfaced through polling
+
+Key files:
+
+- [frontend/src/pages/Home.jsx](frontend/src/pages/Home.jsx)
+- [frontend/src/components/ChatWindow.jsx](frontend/src/components/ChatWindow.jsx)
+- [frontend/src/components/DocumentRepository.jsx](frontend/src/components/DocumentRepository.jsx)
+- [frontend/src/components/SidebarFolders.jsx](frontend/src/components/SidebarFolders.jsx)
+- [frontend/src/components/FoldersView.jsx](frontend/src/components/FoldersView.jsx)
+
+## API routes in use
+
+Current main routes:
+
+- `POST /ingest` - upload and ingest a file
+- `POST /reindex` - re-run ingestion across saved documents
+- `POST /query` - run the Deep Agent over the selected scope
+- `POST /news/ingest-latest` - fetch and ingest the latest gold news
+- `GET /news/scheduled-summary` - fetch the latest scheduled-ingestion result
+- `GET /documents` - list repository documents
+- `DELETE /documents/{document_id}` - delete a document and its Elasticsearch chunks
+- `GET /documents/{document_id}/view` - open the stored source file
+- `GET /documents/{document_id}/metadata` - get metadata + domain
+- `POST /documents/{document_id}/metadata` - save metadata/domain for a specific document
+- `POST /metadata/save` - save metadata/domain through the modal workflow
+- `GET /domains` - list semantic folders/domains
+- `POST /domains` - create a domain
+- `PUT /domains/{domain_id}` - update a domain
+- `DELETE /domains/{domain_id}` - delete a domain
+- `GET /domains/{domain_id}/documents` - list documents inside a domain
+- `POST /generate-presentation` - legacy presentation export route
+
+## Storage layout
+
+Main storage paths:
+
+- `backend/storage/uploads` - uploaded source files
+- `backend/storage/news_articles` - saved Tavily/trafilatura article text files
+- `backend/storage/outputs` - generated sandbox/export outputs
+- `backend/app/db/documents.db` - SQLite database
+- `backend/app/memory/research_history.md` - append-only saved research memory log
+
+`app/core/paths.py` centralizes storage path handling and includes relative-path safety checks to prevent escaping the storage root.
+
+## Tech stack
+
+### Frontend
+
+- `React 19`
+- `Vite 8`
+- plain CSS with app-specific workspace components
+
+### Backend
+
+- `FastAPI`
+- `Elasticsearch 8`
+- `SQLite`
+- `Redis / Redis Stack`
+- `DeepAgents`
+- `LangChain`
+- `LangGraph`
+- `APScheduler`
+- `Modal`
+- `Tavily`
+- `Trafilatura`
+- `pypdf`
+- `python-docx`
+
+### Model usage in the current code
+
+- `OpenAI text-embedding-3-small` for embeddings
+- `OpenAI gpt-5.4-nano` for metadata extraction and memory evaluation/summarization
+- `AWS Bedrock Claude Haiku` for the main Deep Agent response path
+
+## Running locally
+
+### Prerequisites
+
+- `Python 3.11+`
+- `Node.js 18+`
+- Docker Desktop if using `docker-compose`
+- API access for the services you want enabled
+
+### Backend environment
+
+Create `backend/.env` with the variables your setup needs:
 
 ```env
-OPENAI_API_KEY=your_openai_key
-TAVILY_API_KEY=your_tavily_key
-ELASTICSEARCH_URL=http://localhost:9200
-DATABASE_URL=sqlite:///./knowledge_base.db
+OPENAI_API_KEY=...
+ELASTICSEARCH_HOST=http://elasticsearch:9200
+TAVILY_API_KEY=...
+REDIS_URL=redis://rag-redis:6379
+AWS_REGION=...
+USE_MODAL_SANDBOX=false
+MODAL_APP_NAME=sandbox-learning
+MAX_FILE_SIZE=5242880
 ```
 
-Create `frontend/.env.docker` if using Docker and the frontend needs a backend API URL for your environment.
+Notes:
 
-## Docker Compose
+- `OPENAI_API_KEY` is required for embeddings, metadata extraction, and memory summarization
+- `TAVILY_API_KEY` is required for latest-news ingestion
+- `REDIS_URL` is required for Redis-backed research memory
+- `AWS_REGION` is required for the Bedrock chat model path
+- `USE_MODAL_SANDBOX=true` is required if you want sandbox execution enabled
+
+### Docker Compose
+
+From the repo root:
 
 ```bash
-docker-compose up
+docker-compose up --build
 ```
 
 This starts:
 
-- Elasticsearch on port `9200`
-- FastAPI backend on port `8000`
-- React frontend on port `5173`
+- `elasticsearch` on `9200`
+- `redis` on `6379`
+- `redis stack ui` on `8001`
+- `backend` on `8000`
+- `frontend` on `5173`
 
-## Manual Backend Setup
-
-Recommended with `uv`:
+### Manual backend
 
 ```bash
 cd backend
 uv sync
-uv run uvicorn main:app --host 0.0.0.0 --port 8000
+uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Alternative with `pip`:
-
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -e .
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-## Manual Frontend Setup
+### Manual frontend
 
 ```bash
 cd frontend
@@ -465,55 +388,41 @@ npm install
 npm run dev
 ```
 
----
+## Project structure
 
-# API Highlights
+```text
+backend/
+  app/
+    core/          configuration and path helpers
+    db/            SQLite setup
+    memory/        saved research history
+    prompts/       metadata/domain prompts
+    routers/       FastAPI routes
+    services/      ingestion, retrieval, memory, sandbox, news, domains
+    skills/        Deep Agent skill instructions
+  storage/
+    uploads/
+    news_articles/
+    outputs/
+  main.py
 
-| Endpoint | Method | Purpose |
-|---------|--------|---------|
-| `/query` | POST | Run a scoped Deep Agent query across global, folder, or document context. |
-| `/field-search` | POST | Extract requested fields from a document using the Deep Agent and retrieval tools. |
-| `/test-news` | GET | Test Tavily news retrieval. |
-| `/test-extract` | GET | Test article extraction. |
-| `/test-save-news` | GET | Test saving extracted news as text. |
-
-Example `/query` request:
-
-```json
-{
-  "query": "Compare the main risks discussed across these gold market documents.",
-  "scope_type": "documents",
-  "document_ids": ["doc_1", "doc_2"]
-}
+frontend/
+  src/
+    components/
+    pages/
+    services/
 ```
 
----
+## Practical summary
 
-# Roadmap
+This project already uses the features you called out:
 
-Planned or natural next improvements:
+- `Tavily` for latest gold news search and extraction fallback
+- `Redis` for persistent, searchable research memory
+- `Modal sandbox` for isolated agent-driven document generation/editing
+- `OfficeCLI` for office-document workflows inside the sandbox
+- `Elasticsearch` for vector retrieval
+- `SQLite` for metadata and semantic folder state
+- `APScheduler` for daily automated news ingestion
 
-- Streaming responses in the chat UI
-- Redis caching for repeated retrieval and agent outputs
-- Stronger source citation formatting in frontend responses
-- Authentication and role-based access control
-- Analytics dashboard for query trends and domain health
-- Knowledge graph view for entities and relationships
-- Scheduled news ingestion jobs
-- Expanded memory management UI
-- Multi-agent workflows for specialized research modes
-
----
-
-# Project Summary
-
-This project demonstrates a modern full-stack AI research system:
-
-1. Adaptive domains learn from assigned documents.
-2. Hybrid embeddings combine metadata and content signals.
-3. Elasticsearch powers scoped semantic retrieval.
-4. A Deep Agent uses skills and specialized tools for multi-step analysis.
-5. Research memory stores important findings for future context.
-6. The frontend exposes practical workflows for upload, search, chat, and repository management.
-
-The result is more than a static document chatbot. It is a growing research workspace that can retrieve, reason, synthesize, and remember.
+In short, this is not just a chatbot README project. It is a document-and-news research workspace with semantic organization, scoped retrieval, agent analysis, memory, and optional sandboxed export tooling.
