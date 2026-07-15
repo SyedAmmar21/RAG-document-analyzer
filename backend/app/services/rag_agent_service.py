@@ -856,7 +856,7 @@ def get_deep_rag_agent(
         document_id=document_id,
         document_ids=document_ids,
         thread_id=thread_id
-    )
+    ) 
 
     redis_store = get_redis_store()
 
