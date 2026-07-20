@@ -1,18 +1,12 @@
-from app.services.sandbox.session_store import get_backend
+from app.services.cube_sandbox_service import CubeSandboxService
+from app.services.cube_sandbox_initializer import CubeSandboxInitializer
 
-backend = get_backend("officecli-test")
+service = CubeSandboxService()
 
-commands = [
-    "export PATH=/root/.local/bin:$PATH && mkdir -p /workspace/output",
-    "export PATH=/root/.local/bin:$PATH && officecli create /workspace/output/test.pptx --force",
-    "export PATH=/root/.local/bin:$PATH && officecli add /workspace/output/test.pptx / --type slide",
-]
+sandbox = service.create_sandbox()
 
-for i, cmd in enumerate(commands, 1):
-    print(f"\n===== COMMAND {i} =====")
-    print(cmd)
+initializer = CubeSandboxInitializer(sandbox)
 
-    result = backend.execute(cmd)
+initializer.initialize()
 
-    print("Exit:", result.exit_code)
-    print(result.output)
+service.terminate_sandbox()
