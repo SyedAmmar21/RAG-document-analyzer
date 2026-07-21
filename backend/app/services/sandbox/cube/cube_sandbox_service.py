@@ -27,7 +27,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from e2b_code_interpreter import Sandbox
-from app.services.cube_sidecar import CubeSidecar
+from app.services.sandbox.cube.cube_sidecar import CubeSidecar
 
 load_dotenv()
 

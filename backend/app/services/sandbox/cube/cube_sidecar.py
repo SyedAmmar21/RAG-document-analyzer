@@ -11,7 +11,7 @@ Nothing happens if it has already been initialized.
 import threading
 
 from dotenv import load_dotenv
-from app.services.dev_sidecar import setup_dev_sidecar
+from app.services.sandbox.cube.dev_sidecar import setup_dev_sidecar
 
 
 class CubeSidecar:

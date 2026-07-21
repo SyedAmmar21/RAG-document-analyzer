@@ -15,7 +15,7 @@ from pathlib import PurePosixPath
 
 from langchain_modal import ModalSandbox
 
-from app.services.modal_sandbox_service import ModalSandboxService
+from app.services.sandbox.modal.modal_sandbox_service import ModalSandboxService
 from typing import Optional
 
 logger = logging.getLogger(__name__)
