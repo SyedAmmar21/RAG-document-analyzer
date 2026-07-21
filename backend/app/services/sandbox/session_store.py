@@ -8,19 +8,22 @@ follow-up turns until the session has been idle for too long.
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-
 from langchain_modal import ModalSandbox
-
 from app.services.sandbox.modal.modal_sandbox_service import ModalSandboxService
+from app.services.sandbox.cube.cube_sandbox_service import CubeSandboxService
+from app.services.sandbox.cube.cube_backend import CubeSandboxBackend
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 IDLE_TIMEOUT_SECONDS = 3600
+
+SANDBOX_PROVIDER = os.getenv("SANDBOX_PROVIDER", "modal").lower()
 
 @dataclass
 class WorkingDocument:
@@ -30,8 +33,8 @@ class WorkingDocument:
 
 @dataclass
 class SandboxSession:
-    backend: ModalSandbox
-    service: ModalSandboxService
+    backend: any
+    service: any 
     last_used: float
     current_document: Optional[WorkingDocument] = None
     pending_output_files: list[str] | None = None
@@ -41,7 +44,7 @@ _sessions: dict[str, SandboxSession] = {}
 _sessions_lock = threading.Lock()
 
 
-def get_backend(thread_id: str) -> ModalSandbox:
+def get_backend(thread_id: str):
     """
     Return the sandbox backend for a conversation thread.
 
@@ -57,7 +60,8 @@ def get_backend(thread_id: str) -> ModalSandbox:
                 existing_session.last_used = now
 
                 logger.info(
-                    "Reusing Modal sandbox backend for thread_id=%s",
+                    "Reusing %s sandbox backend for thread_id=%s",
+                    SANDBOX_PROVIDER,
                     thread_id,
                 )
 
@@ -71,8 +75,19 @@ def get_backend(thread_id: str) -> ModalSandbox:
 
                 _sessions.pop(thread_id, None)
 
-    service = ModalSandboxService()
-    backend = service.create_sandbox()
+    if SANDBOX_PROVIDER == "cube":
+        service = CubeSandboxService()
+        sandbox = service.create_sandbox()
+        from app.services.sandbox.cube.cube_sandbox_initializer import (
+            CubeSandboxInitializer,
+        )
+        initializer = CubeSandboxInitializer(sandbox)
+        initializer.initialize()
+        backend = CubeSandboxBackend(sandbox)
+
+    else:
+        service = ModalSandboxService()
+        backend = service.create_sandbox()
 
     with _sessions_lock:
         existing_session = _sessions.get(thread_id)
@@ -80,7 +95,7 @@ def get_backend(thread_id: str) -> ModalSandbox:
             existing_session.last_used = now
             service.terminate_sandbox()
             logger.info(
-                "Reusing concurrently-created Modal sandbox backend for thread_id=%s",
+                "Reusing concurrently-created sandbox backend for thread_id=%s",
                 thread_id,
             )
             return existing_session.backend
@@ -92,11 +107,11 @@ def get_backend(thread_id: str) -> ModalSandbox:
             pending_output_files=[],
         )
 
-    logger.info("Created Modal sandbox backend for thread_id=%s", thread_id)
+    logger.info("Created %s sandbox backend for thread_id=%s", SANDBOX_PROVIDER, thread_id)
     return backend
 
 
-def get_existing_backend(thread_id: str) -> ModalSandbox | None:
+def get_existing_backend(thread_id: str) -> any | None:
     """
     Return an existing sandbox backend for a conversation thread.
 
@@ -129,10 +144,11 @@ def cleanup_idle() -> None:
     for thread_id, session in expired_sessions:
         try:
             session.service.terminate_sandbox()
-            logger.info("Cleaned up idle Modal sandbox for thread_id=%s", thread_id)
+            logger.info("Cleaned up idle %s sandbox for thread_id=%s", SANDBOX_PROVIDER, thread_id)
         except Exception:
             logger.exception(
-                "Failed to clean up idle Modal sandbox for thread_id=%s",
+                "Failed to clean up idle %s sandbox for thread_id=%s",
+                SANDBOX_PROVIDER,
                 thread_id,
             )
 
