@@ -27,6 +27,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from e2b_code_interpreter import Sandbox
+from app.services.cube_sidecar import CubeSidecar
 
 load_dotenv()
 
@@ -103,52 +104,25 @@ class CubeSandboxService:
     # Lifecycle
     # ---------------------------------------------------------
 
-    def create_sandbox(self) -> Sandbox:
-        """
-        Create a CubeSandbox instance.
-        """
+    def create_sandbox(self):
 
-        # ---------------------------------------------------------
-        # Validate configuration
-        # ---------------------------------------------------------
-
-        if not self.api_url:
-            raise RuntimeError("E2B_API_URL is not configured.")
-
-        if not self.api_key:
-            raise RuntimeError("E2B_API_KEY is not configured.")
-
-        if not self.template_id:
-            raise RuntimeError("CUBE_TEMPLATE_ID is not configured.")
-
-        # ---------------------------------------------------------
-        # Configure SDK
-        # ---------------------------------------------------------
-
-        os.environ["E2B_API_URL"] = self.api_url
-        os.environ["E2B_API_KEY"] = self.api_key
-
-        if self.ssl_cert:
-            os.environ["SSL_CERT_FILE"] = self.ssl_cert
+        CubeSidecar.initialize()
 
         logger.info("Connecting to CubeSandbox...")
 
-        # ---------------------------------------------------------
-        # Create sandbox
-        # ---------------------------------------------------------
-
-        self.sandbox = Sandbox.create(
-            template=self.template_id,
+        sandbox = Sandbox.create(
+            template=os.environ["CUBE_TEMPLATE_ID"],
             timeout=1800,
         )
 
         logger.info(
             "CubeSandbox created successfully. Sandbox ID: %s",
-            self.sandbox.sandbox_id,
+            sandbox.sandbox_id,
         )
 
-        return self.sandbox
-
+        return sandbox
+    
+    
     def terminate_sandbox(self) -> None:
         """
         Destroy the current sandbox.

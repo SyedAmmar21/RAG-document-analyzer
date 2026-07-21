@@ -47,6 +47,7 @@ class CubeSandboxInitializer:
 
         result = self.sandbox.commands.run(
             command,
+            user="root",
             timeout=600,
         )
 
