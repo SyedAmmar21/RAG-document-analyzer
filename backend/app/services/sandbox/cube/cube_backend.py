@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from unittest import result
 
 
 @dataclass
@@ -24,6 +25,27 @@ class CubeSandboxBackend:
             command,
             user="root",
         )
+         
+        print("===== COMMAND =====")
+        print(command)
+
+        print("===== EXIT CODE =====")
+        print(result.exit_code)
+
+        print("===== STDOUT =====")
+        print(result.stdout)
+
+        print("===== STDERR =====")
+        print(result.stderr)
+
+        files = self.sandbox.commands.run(
+            "ls -lah /workspace/output 2>/dev/null || true",
+            user="root",
+        )
+
+
+        print("===== OUTPUT FOLDER =====")
+        print(files.stdout)
 
         output = ""
 
