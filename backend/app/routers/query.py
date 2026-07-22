@@ -26,13 +26,25 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _download_sandbox_file_bytes(sandbox_backend, sandbox_path: str) -> bytes | None:
-    """
-    Download a sandbox file while preferring Modal's newer filesystem API.
+import httpx
 
-    Falls back to LangChain's wrapper method for compatibility with older
-    backends that do not expose the underlying filesystem interface.
-    """
+def _download_sandbox_file_bytes(sandbox_backend, sandbox_path: str) -> bytes | None:
+    # -----------------------------
+    # CubeSandbox
+    # -----------------------------
+    cube_sandbox = getattr(sandbox_backend, "sandbox", None)
+
+    if cube_sandbox is not None:
+        url = cube_sandbox.download_url(sandbox_path)
+
+        with httpx.Client(headers={"Accept-Encoding": "identity"}) as client:
+            response = client.get(url)
+            response.raise_for_status()
+            return response.content
+
+    # -----------------------------
+    # Modal Sandbox (existing code)
+    # -----------------------------
     raw_sandbox = getattr(sandbox_backend, "_sandbox", None)
     filesystem = getattr(raw_sandbox, "filesystem", None)
 
