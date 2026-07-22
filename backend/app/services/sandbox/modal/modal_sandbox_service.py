@@ -19,6 +19,7 @@ from typing import Optional
 
 from langchain_modal import ModalSandbox
 import modal
+from app.services.sandbox.backend_contract import officecli_install_command
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -108,7 +109,7 @@ class ModalSandboxService:
                     "libicu-dev"
                 )
                 .run_commands(
-                        "curl -fsSL https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.sh | bash",
+                        officecli_install_command(),
                         "find / -name officecli 2>/dev/null || true",
                         "which officecli || true",
                         "ls -la ~/.local/bin || true"

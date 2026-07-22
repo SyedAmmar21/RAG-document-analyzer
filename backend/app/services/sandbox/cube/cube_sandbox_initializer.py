@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 
 from e2b_code_interpreter import Sandbox
+from app.services.sandbox.backend_contract import officecli_install_command
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class CubeSandboxInitializer:
         logger.info("Installing OfficeCLI...")
 
         self.run_command(
-            "curl -fsSL https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.sh | bash"
+            officecli_install_command()
         )
 
     def verify_officecli(self):

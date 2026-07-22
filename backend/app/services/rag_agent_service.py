@@ -6,6 +6,7 @@ import json
 import re
 import os
 from collections import defaultdict
+from pathlib import PurePosixPath
 
 from app.services.retrieval_service import search_documents
 from app.services.redis_store_service import search_research_memories
@@ -15,6 +16,10 @@ from deepagents.backends import (
     FilesystemBackend,
     CompositeBackend,
     StoreBackend,
+)
+from app.services.sandbox.backend_contract import (
+    build_command_preamble,
+    sandbox_enabled,
 )
 
 from app.services.redis_store_service import get_redis_store
@@ -698,49 +703,57 @@ Avoid:
     @tool
     def sandbox_execute(command: str) -> str:
         """
-        Run a shell command inside the Modal sandbox.
 
-        Use this tool for ALL OfficeCLI document generation commands.
-        Use when the user asks to create presentations, reports,
-        spreadsheets, or PDF documents.
+        Execute a shell command inside the configured sandbox environment.
 
-        Always:
-        - Create output directory first: mkdir -p /workspace/output
+        Use this tool whenever a task requires shell execution, including
+        OfficeCLI document generation.
 
-        - IMPORTANT FOR NEW OFFICE DOCUMENTS:
-          For a brand new Office document (.pptx, .docx, .xlsx):
-          1. Create the Office document first using: officecli create /workspace/output/<filename>.<extension>
-          2. After the document exists, use OfficeCLI batch commands to populate or edit it.
-          3. Never use `touch` to create Office documents. A touched file is a 0-byte file and is not a valid Office document.
-          4. If editing an existing Office document, do NOT recreate it. Modify the existing document directly.
-          
-        - Save files to /workspace/output/<filename>.<format>
-        - Check exit_code == 0 in the response before continuing
-        - Follow the OfficeCLI skill file for exact command sequences
+        For Office document operations:
 
-        Supported formats: pptx, docx, xlsx, pdf
+        - Follow the OfficeCLI skill as the authoritative workflow.
+        - Do not invent OfficeCLI commands, skill names, JSON fields,
+        selectors, or properties.
+        - Use only officially supported OfficeCLI commands.
+        - If OfficeCLI syntax is uncertain, consult OfficeCLI help before
+        executing another OfficeCLI command.
+        - Create new Office documents using the official OfficeCLI workflow.
+        - Modify existing Office documents rather than recreating them.
+        - Save generated documents to /workspace/output/.
+        - Prefer officecli batch when multiple OfficeCLI operations can be
+        executed together.
+        - Minimize the number of sandbox executions whenever practical.
+        - If an OfficeCLI command fails, repair only the failed command
+        instead of restarting the entire workflow.
+
+        The sandbox runs the provided shell command inside a standardized
+        shell environment. It does not interpret or modify OfficeCLI syntax.
 
         Args:
-            command: shell command to run in the sandbox
+            command: Shell command to execute.
 
         Returns:
-            exit_code and output from the command
+            Sandbox execution result containing:
+            - exit_code
+            - stdout
+            - stderr
+            - output (stdout + stderr)
         """
+       
         import os
         from app.services.sandbox.session_store import (
+            get_current_document as _get_current_document,
             get_backend as _get_backend,
             record_output_files,
         )
 
-        if os.getenv("USE_MODAL_SANDBOX", "false").lower() != "true":
-            return "exit_code=1\noutput=Sandbox is disabled (USE_MODAL_SANDBOX=false)"
+        if not sandbox_enabled():
+            return "exit_code=1\nstdout=\nstderr=Sandbox is disabled\noutput=Sandbox is disabled"
 
         backend = _get_backend(thread_id)
         output_state_before = _get_output_file_state(backend)
 
-        # OfficeCLI is installed in /root/.local/bin inside Modal sandboxes.
-        # Ensure it is available on PATH for every command.
-        command = f"export PATH=/root/.local/bin:$PATH && {command}"
+        command = f"{build_command_preamble()}{command}"
 
         print(f"EXECUTING: {command}")
         result = backend.execute(command)
@@ -751,14 +764,75 @@ Avoid:
             if output_state_before.get(filename) != modified_at
         ]
 
+        if result.exit_code == 0 and "officecli" in command.lower() and not changed_output_files:
+            current_document = _get_current_document(thread_id)
+            if current_document is not None:
+                current_filename = PurePosixPath(current_document.path).name
+                if current_filename:
+                    changed_output_files.append(current_filename)
+
         if changed_output_files:
             record_output_files(
                 thread_id,
                 [f"/workspace/output/{filename}" for filename in changed_output_files],
             )
 
+        
+        import json
+        import re
+
+        if "officecli batch" in command:
+
+            print("=" * 80)
+            print("VALIDATING OFFICECLI BATCH")
+            print("=" * 80)
+
+            payload = None
+
+            # heredoc
+            m = re.search(
+                r"<<'EOF'\s*(.*?)\s*EOF",
+                command,
+                flags=re.DOTALL,
+            )
+
+            if m:
+                payload = m.group(1)
+
+            # echo '[ ... ]'
+            if payload is None:
+                m = re.search(
+                    r"echo\s+'(.*?)'\s*\|\s*officecli\s+batch",
+                    command,
+                    flags=re.DOTALL,
+                )
+
+                if m:
+                    payload = m.group(1)
+
+            if payload is None:
+                print("No batch JSON found.")
+
+            else:
+
+                print("Batch JSON:")
+                print(payload)
+
+                try:
+                    json.loads(payload)
+                    print("✓ JSON VALID")
+
+                except Exception as e:
+
+                    print("✗ JSON INVALID")
+                    print(e)
+
+                    raise
+
         return (
             f"exit_code={result.exit_code}\n"
+            f"stdout={result.stdout}\n"
+            f"stderr={result.stderr}\n"
             f"output={result.output}\n"
             f"output_dir_listing={chr(10).join(sorted(output_state_after.keys()))}\n"
             f"tracked_output_files={json.dumps(sorted(changed_output_files))}"
@@ -935,17 +1009,18 @@ WORKING DOCUMENT STATE:
   to generate or specify a document first.  
 
 DOCUMENT GENERATION:
-When the user asks to create, generate, or export any document
-(PowerPoint presentation, Word report, Excel spreadsheet, PDF):
-- Use sandbox_execute tool directly to run OfficeCLI commands in the sandbox
-- Follow the OfficeCLI skill file for exact command sequences
-- Save all generated files to /workspace/output/
-- Create output directory first: sandbox_execute("mkdir -p /workspace/output")
-- Load the right skill first: sandbox_execute("officecli load_skill pptx") etc.
-- Check exit_code == 0 after every command
-- Tell the user their document is ready when done
-- Supported formats: pptx, docx, xlsx, pdf
-- You decide the structure, content, and layout freely based on the request
+
+When the user asks to create, generate, export, or modify an Office document
+(PowerPoint presentation, Word document, Excel spreadsheet, or PDF):
+
+- Use sandbox_execute for all Office document operations.
+- Follow the OfficeCLI skill as the single source of truth for document generation.
+- Do not invent OfficeCLI commands, syntax, JSON fields, or property names.
+- Use only officially supported OfficeCLI commands.
+- If the correct OfficeCLI syntax is uncertain, consult OfficeCLI help before issuing another OfficeCLI command.
+- Save all generated documents to /workspace/output/.
+- PDFs should be generated through the workflow defined by the OfficeCLI skill.
+- Return the generated filename when generation succeeds.
 
 ========================================
 MULTI-STEP REASONING FOR COMPLEX QUESTIONS
@@ -1072,17 +1147,19 @@ Result: Executive-level conclusion with:
 When no relevant information is found, clearly say so.
 
 SANDBOX EXECUTION RULES:
-- When running multiple OfficeCLI commands, batch them using officecli batch
-  to reduce the number of execute calls
-- Always complete document generation in as few execute calls as possible
-- Use officecli batch for multi-step document creation:
 
-  sandbox_execute('''echo '[
-    {"command":"add","path":"/","type":"slide","props":{"title":"Slide 1"}},
-    {"command":"add","path":"/slide[1]","type":"shape","props":{"text":"Content"}}
-  ]' | officecli batch /workspace/output/file.pptx''')
+The sandbox_execute tool runs shell commands in a standardized sandbox shell.
 
-- Prefer batch over individual commands whenever adding multiple elements
+For Office document generation:
+
+- Use OfficeCLI through sandbox_execute.
+- The OfficeCLI skill defines the complete workflow.
+- Do not duplicate OfficeCLI workflow logic in this prompt.
+- Prefer officecli batch whenever multiple OfficeCLI operations can be combined into one execution.
+- Minimize the number of sandbox_execute calls whenever practical.
+- Never invent OfficeCLI commands, skill names, JSON fields, selectors, or properties.
+- If OfficeCLI returns an error, repair only the failed command rather than restarting the entire document generation process.
+- Stop issuing OfficeCLI commands once the requested document has been successfully generated.
 """,
         middleware=[
             BedrockPromptCachingMiddleware(

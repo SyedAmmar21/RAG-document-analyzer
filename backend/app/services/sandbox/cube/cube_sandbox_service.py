@@ -114,6 +114,7 @@ class CubeSandboxService:
             template=os.environ["CUBE_TEMPLATE_ID"],
             timeout=1800,
         )
+        self.sandbox = sandbox
 
         logger.info(
             "CubeSandbox created successfully. Sandbox ID: %s",

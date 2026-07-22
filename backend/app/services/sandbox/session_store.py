@@ -13,8 +13,8 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from langchain_modal import ModalSandbox
 from app.services.sandbox.modal.modal_sandbox_service import ModalSandboxService
+from app.services.sandbox.modal.modal_backend import ModalSandboxBackend
 from app.services.sandbox.cube.cube_sandbox_service import CubeSandboxService
 from app.services.sandbox.cube.cube_backend import CubeSandboxBackend
 from typing import Optional
@@ -87,7 +87,8 @@ def get_backend(thread_id: str):
 
     else:
         service = ModalSandboxService()
-        backend = service.create_sandbox()
+        sandbox = service.create_sandbox()
+        backend = ModalSandboxBackend(sandbox)
 
     with _sessions_lock:
         existing_session = _sessions.get(thread_id)

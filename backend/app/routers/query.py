@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+from app.core.paths import OUTPUT_DIR
 from app.services.rag_agent_service import get_deep_rag_agent
 from app.services.document_service import add_ai_response
 from app.services.domain_service import get_documents_by_domain
@@ -15,6 +16,7 @@ from app.services.memory_service import (
 
 from app.services.sandbox.session_store import (
     consume_output_files,
+    get_current_document,
     get_existing_backend,
     set_current_document,
     WorkingDocument,
@@ -26,38 +28,53 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-import httpx
-
 def _download_sandbox_file_bytes(sandbox_backend, sandbox_path: str) -> bytes | None:
-    # -----------------------------
-    # CubeSandbox
-    # -----------------------------
-    cube_sandbox = getattr(sandbox_backend, "sandbox", None)
+    download_file_bytes = getattr(sandbox_backend, "download_file_bytes", None)
+    if callable(download_file_bytes):
+        return download_file_bytes(sandbox_path)
 
-    if cube_sandbox is not None:
-        url = cube_sandbox.download_url(sandbox_path)
+    raise RuntimeError(
+        f"Sandbox backend does not implement download_file_bytes(): {type(sandbox_backend)!r}"
+    )
 
-        with httpx.Client(headers={"Accept-Encoding": "identity"}) as client:
-            response = client.get(url)
-            response.raise_for_status()
-            return response.content
 
-    # -----------------------------
-    # Modal Sandbox (existing code)
-    # -----------------------------
-    raw_sandbox = getattr(sandbox_backend, "_sandbox", None)
-    filesystem = getattr(raw_sandbox, "filesystem", None)
+def _is_download_request(user_query: str) -> bool:
+    lowered = user_query.lower()
+    return any(
+        phrase in lowered
+        for phrase in (
+            "download it",
+            "download the file",
+            "download the document",
+            "download the presentation",
+            "download the report",
+            "download the spreadsheet",
+            "download",
+        )
+    )
 
-    if filesystem is not None:
-        read_bytes = getattr(filesystem, "read_bytes", None)
-        if callable(read_bytes):
-            return read_bytes(sandbox_path)
 
-    results = sandbox_backend.download_files([sandbox_path])
-    if results and results[0].content is not None:
-        return results[0].content
+def _existing_download_urls_for_thread(thread_id: str) -> list[str]:
+    current_document = get_current_document(thread_id)
+    if current_document is None:
+        return []
 
-    return None
+    output_path = OUTPUT_DIR / current_document.filename
+    if not output_path.exists() or not output_path.is_file():
+        return []
+
+    return [f"/download/{current_document.filename}"]
+
+
+def _append_download_links(answer: str, download_urls: list[str]) -> str:
+    if not download_urls:
+        return answer
+
+    lines = [answer.rstrip(), "", "Generated file download:"]
+    for url in download_urls:
+        lines.append(f"- {url}")
+
+    return "\n".join(lines).strip()
 
 
 # Request schema
@@ -242,8 +259,9 @@ Current user question:
             filenames = consume_output_files(request.thread_id)
             sandbox_backend = get_existing_backend(request.thread_id)
 
+            downloaded_urls = []
+
             if sandbox_backend is not None and filenames:
-                downloaded_urls = []
                 for filename in filenames:
                     content = await asyncio.to_thread(
                         _download_sandbox_file_bytes,
@@ -251,9 +269,8 @@ Current user question:
                         f"/workspace/output/{filename}",
                     )
                     if content is not None:
-                        out_dir = Path("storage/outputs")
-                        out_dir.mkdir(parents=True, exist_ok=True)
-                        out_path = out_dir / filename
+                        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+                        out_path = OUTPUT_DIR / filename
                         out_path.write_bytes(content)
                         downloaded_urls.append(f"/download/{filename}")
 
@@ -271,14 +288,19 @@ Current user question:
                         
                         # Keep generated files in the sandbox so they can be edited
                         # sandbox_backend.execute(f"rm /workspace/output/{filename}")
-                if downloaded_urls:
-                    response["download_urls"] = downloaded_urls
+            if not downloaded_urls and _is_download_request(request.query):
+                downloaded_urls = _existing_download_urls_for_thread(request.thread_id)
+
+            if downloaded_urls:
+                response["download_urls"] = downloaded_urls
         except Exception as e:
             logger.warning("File download post-processing failed: %s", e)
             # Never break the main agent response over file download
 
         # Extract answer only after successful invoke
         answer = response["messages"][-1].content
+        if "download_urls" in response:
+            answer = _append_download_links(answer, response["download_urls"])
 
         print("\n===== AGENT RESPONSE DEBUG =====")
         print(f"Model: {response['messages'][-1].response_metadata.get('model_name', 'unknown')}")

@@ -1,11 +1,13 @@
-from dataclasses import dataclass
-from unittest import result
+import logging
 
+from app.services.sandbox.backend_contract import (
+    SandboxCommandResult,
+    log_command_result,
+    result_from_exception,
+    result_from_object,
+)
 
-@dataclass
-class ExecuteResult:
-    exit_code: int
-    output: str
+logger = logging.getLogger(__name__)
 
 
 class CubeSandboxBackend:
@@ -20,45 +22,55 @@ class CubeSandboxBackend:
     def __init__(self, sandbox):
         self.sandbox = sandbox
 
-    def execute(self, command: str) -> ExecuteResult:
-        result = self.sandbox.commands.run(
-            command,
-            user="root",
-        )
-         
-        print("===== COMMAND =====")
-        print(command)
+    def execute(self, command: str) -> SandboxCommandResult:
+        try:
+            raw_result = self.sandbox.commands.run(
+                command,
+                user="root",
+            )
+            result = result_from_object(raw_result)
+            if result is None:
+                raise RuntimeError(
+                    f"Cube backend returned an unsupported result type: {type(raw_result)!r}"
+                )
+        except Exception as exc:
+            result = result_from_exception(exc)
+            if result is None:
+                raise
 
-        print("===== EXIT CODE =====")
-        print(result.exit_code)
+        output_files = self._output_listing()
+        log_command_result(logger, "cube", command, result, output_files)
+        return result
 
-        print("===== STDOUT =====")
-        print(result.stdout)
+    def download_file_bytes(self, sandbox_path: str) -> bytes | None:
+        try:
+            return self.sandbox.files.read(
+                sandbox_path,
+                format="bytes",
+                user="root",
+                gzip=False,
+            )
+        except Exception:
+            url = self.sandbox.download_url(sandbox_path)
+            import httpx
 
-        print("===== STDERR =====")
-        print(result.stderr)
-
-        files = self.sandbox.commands.run(
-            "ls -lah /workspace/output 2>/dev/null || true",
-            user="root",
-        )
-
-
-        print("===== OUTPUT FOLDER =====")
-        print(files.stdout)
-
-        output = ""
-
-        if result.stdout:
-            output += result.stdout
-
-        if result.stderr:
-            output += result.stderr
-
-        return ExecuteResult(
-            exit_code=result.exit_code,
-            output=output,
-        )
+            with httpx.Client(headers={"Accept-Encoding": "identity"}) as client:
+                response = client.get(url)
+                response.raise_for_status()
+                return response.content
 
     def terminate(self):
         self.sandbox.kill()
+
+    def _output_listing(self) -> str:
+        try:
+            raw_result = self.sandbox.commands.run(
+                "ls -lah /workspace/output 2>/dev/null || true",
+                user="root",
+            )
+            result = result_from_object(raw_result)
+            if result is None:
+                return "<unavailable>"
+            return result.stdout or result.output or "<empty>"
+        except Exception:
+            return "<unavailable>"

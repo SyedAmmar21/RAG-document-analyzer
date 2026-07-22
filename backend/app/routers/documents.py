@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.core.config import ELASTICSEARCH_HOST
-from app.core.paths import resolve_storage_path, UPLOAD_DIR, NEWS_ARTICLES_DIR
+from app.core.paths import resolve_storage_path, UPLOAD_DIR, NEWS_ARTICLES_DIR, OUTPUT_DIR
 from app.db.database import get_connection
 from app.services.document_service import get_document_by_id
 from app.services.domain_service import (
@@ -273,6 +273,31 @@ async def view_document(document_id: str):
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=f"Invalid document path: {str(e)}")
+
+
+@router.get("/download/{filename}")
+async def download_generated_file(filename: str):
+    output_path = OUTPUT_DIR / filename
+
+    try:
+        output_path.relative_to(OUTPUT_DIR)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid output filename")
+
+    if not output_path.exists() or not output_path.is_file():
+        raise HTTPException(status_code=404, detail="Generated file not found")
+
+    media_type, _ = mimetypes.guess_type(str(output_path))
+    safe_file_name = output_path.name.replace('"', "")
+
+    return FileResponse(
+        str(output_path),
+        media_type=media_type or "application/octet-stream",
+        filename=safe_file_name,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_file_name}"',
+        },
+    )
 
 
 @router.get("/documents/{document_id}/metadata")
