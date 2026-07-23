@@ -817,17 +817,33 @@ Avoid:
 
                 print("Batch JSON:")
                 print(payload)
+                payload = payload.strip()
 
-                try:
-                    json.loads(payload)
-                    print("✓ JSON VALID")
+                if not payload:
+                    print("Batch JSON was empty; skipping local validation.")
+                else:
+                    try:
+                        json.loads(payload)
+                        print("✓ JSON VALID")
 
-                except Exception as e:
+                    except Exception as e:
 
-                    print("✗ JSON INVALID")
-                    print(e)
+                        print("✗ JSON INVALID")
+                        print(e)
 
-                    raise
+                        # Keep this validator best-effort. Its job is to help
+                        # debug malformed OfficeCLI batch payloads, not to mask
+                        # the actual sandbox execution result with a secondary
+                        # JSON parsing exception from this wrapper.
+                        if result.exit_code != 0:
+                            result.stderr = (
+                                f"{result.stderr}\n"
+                                f"Local batch JSON validation failed: {e}"
+                            ).strip()
+                            result.output = (
+                                f"{result.output}\n"
+                                f"Local batch JSON validation failed: {e}"
+                            ).strip()
 
         return (
             f"exit_code={result.exit_code}\n"
