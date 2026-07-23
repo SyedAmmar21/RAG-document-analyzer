@@ -15,49 +15,121 @@ Use OfficeCLI through the `sandbox_execute()` tool whenever the user requests:
 
 Everything below this section is the official OfficeCLI documentation.
 
-Treat the official documentation as the authoritative reference.
+Treat the official OfficeCLI documentation as the authoritative reference.
 
-Do not invent commands, properties, selectors, JSON fields, or workflows.
+Never invent OfficeCLI commands, JSON fields, properties, selectors, or workflows.
+
+If any instruction in this skill conflicts with the official documentation below, the official documentation always takes precedence.
 
 ---
 
-# Execution Principles
+# Core Principles
 
-1. Plan the complete document before executing OfficeCLI commands.
+## 1. Plan First
 
-2. Prefer one complete workflow over many incremental edits.
+Plan the complete document before executing any OfficeCLI commands.
 
-3. Minimize sandbox executions.
+Determine:
 
-4. Prefer one OfficeCLI batch operation instead of many individual commands whenever practical.
+- document structure
+- sections
+- slides
+- worksheets
+- tables
+- headings
+- charts
+- content hierarchy
 
-5. Default formatting is sufficient unless the user explicitly requests styling.
+Avoid alternating between planning and execution.
 
-6. Prioritize successful document generation over visual perfection.
+---
+
+## 2. Generate Complete Documents
+
+Treat OfficeCLI primarily as a document generator.
+
+Generate the complete requested document in one workflow whenever practical.
+
+Do not repeatedly modify an existing document unless the user requests revisions.
+
+---
+
+## 3. Minimize Sandbox Executions
+
+Prefer:
+
+- one OfficeCLI batch
+- one shell workflow
+- one sandbox execution
+
+over many incremental executions.
+
+Do not execute one sandbox command per slide, paragraph, worksheet, or table unless necessary.
+
+---
+
+## 4. Batch OfficeCLI Operations
+
+Whenever multiple OfficeCLI operations are needed:
+
+Prefer
+
+```bash
+officecli batch
+```
+
+instead of many separate OfficeCLI commands.
+
+---
+
+## 5. Produce Professional Documents
+
+Successful generation is the highest priority.
+
+However, unless the user requests otherwise, generate documents that are:
+
+- professionally organized
+- readable
+- well structured
+- logically grouped
+
+Prefer:
+
+- meaningful titles
+- section headings
+- bullet lists
+- tables for comparisons
+- charts when appropriate
+- balanced slide layouts
+- concise content
+
+Use OfficeCLI's built-in layouts and defaults.
+
+Avoid spending excessive effort on cosmetic styling.
 
 ---
 
 # Standard Workflow
 
-For every NEW Office document:
-
-### Step 1
-
-Create the output directory.
+## Step 1 — Create Output Directory
 
 ```bash
 mkdir -p /workspace/output
 ```
 
+Continue only if:
+
+```
+exit_code == 0
+```
+
 ---
 
-### Step 2
-
-Load exactly ONE OfficeCLI skill.
+## Step 2 — Load Exactly One OfficeCLI Skill
 
 Never infer skill names.
 
-Only use:
+Use only:
 
 PowerPoint
 
@@ -77,93 +149,103 @@ Excel
 officecli load_skill excel
 ```
 
-Never reload the same skill unless generating a different document type.
+Never reload the same skill unless generating another document type.
 
 ---
 
-### Step 3
+## Step 3 — Create the Office Document
 
-### Create the document
-
-The ONLY valid syntax is:
+The ONLY supported syntax is:
 
 ```bash
 officecli create /workspace/output/<filename>.<extension>
 ```
 
-Examples:
+Examples
 
 ```bash
 officecli create /workspace/output/report.docx
+
 officecli create /workspace/output/report.xlsx
+
 officecli create /workspace/output/report.pptx
 ```
 
-Do NOT generate commands like:
+Never generate:
 
 ```bash
-officecli create --file-path ...
-officecli create --file-type ...
 officecli create word ...
+
 officecli create docx ...
+
+officecli create --file-path ...
+
+officecli create --file-type ...
+
 officecli create --output ...
 ```
 
 The document type is inferred entirely from the filename extension.
 
+Never create Office documents using:
+
+```bash
+touch
+```
+
 If the document already exists:
 
-DO NOT recreate it.
-
-Modify the existing document.
+- reuse it
+- modify it
+- never recreate it unless explicitly requested
 
 ---
 
-### Step 4
+## Step 4 — Populate the Document
 
-Populate the document.
+After creation:
 
-If multiple OfficeCLI operations are required:
+Populate the document using OfficeCLI.
+
+If many operations are required:
 
 Prefer one OfficeCLI batch command.
 
-Do not execute one sandbox command per slide, paragraph, row, or worksheet unless necessary.
+Prepare the complete batch before execution whenever practical.
 
 ---
 
-### Step 5
+## Step 5 — Finish
 
-Stop once:
+Stop when:
 
 - exit_code == 0
 - the requested document exists
 - the requested content has been generated
 
-Do not continue improving the document after successful generation unless the user explicitly requests revisions.
+Do not continue issuing OfficeCLI commands simply to improve formatting unless the user explicitly requests revisions.
 
 ---
 
 # Error Recovery
 
-If an OfficeCLI command fails:
+If a command fails:
 
-1. Read the error.
+1. Read the error carefully.
 
-2. If the error indicates unknown syntax:
-
-Use
+2. If the syntax is unknown:
 
 ```bash
 officecli help <format> <element>
 ```
 
-Never guess OfficeCLI syntax.
-
 3. Correct only the failed command.
 
 4. Continue the workflow.
 
-Do not restart the document unless creation itself failed.
+Do not restart the entire document unless creation itself failed.
+
+Never guess OfficeCLI syntax.
 
 ---
 
@@ -175,51 +257,41 @@ When using
 officecli batch
 ```
 
-the payload must be valid JSON.
+The payload must be valid JSON.
 
-Do not invent JSON fields.
-
-Only use fields supported by OfficeCLI.
+Only use OfficeCLI-supported fields.
 
 Examples include:
 
-```
-command
-path
-type
-props
-parent
-from
-to
-before
-after
-index
-selector
-mode
-depth
-```
+- command
+- path
+- parent
+- type
+- props
+- selector
+- before
+- after
+- from
+- to
+- index
+- mode
+- depth
 
-If unsure whether a JSON field exists:
+If unsure whether a field exists:
 
-Consult the OfficeCLI help.
+Consult OfficeCLI help.
+
+Never invent JSON fields.
 
 ---
 
 # Shell Rules
 
-Shell rules apply only to shell commands.
+Shell escaping rules apply only to shell commands.
 
-They do NOT apply to OfficeCLI batch JSON.
+They do NOT apply inside OfficeCLI batch JSON.
 
-For example:
-
-```
---prop text='$15M'
-```
-
-may require shell quoting.
-
-However:
+Correct:
 
 ```json
 {
@@ -227,49 +299,54 @@ However:
 }
 ```
 
-is already valid JSON.
+Incorrect:
+
+```json
+{
+  "text": "\$15M"
+}
+```
 
 Never escape dollar signs inside OfficeCLI batch JSON.
 
-Never write:
+Only valid JSON escape sequences are:
 
 ```
-\$15M
+\\
+\"
+\/
+\b
+\f
+\n
+\r
+\t
+\uXXXX
 ```
-
-because this produces invalid JSON.
 
 ---
 
 # Document Paths
 
-Always save generated Office documents under:
+Always save generated Office documents under
 
 ```
 /workspace/output/
 ```
 
-Examples:
-
-```
-/workspace/output/report.docx
-/workspace/output/report.xlsx
-/workspace/output/report.pptx
-```
+Prefer absolute paths.
 
 Do not change directories unless necessary.
 
-Prefer absolute paths when invoking OfficeCLI.
-
 ---
 
-# Modification Rules
+# Document Modification
 
 When editing an existing Office document:
 
 - reuse the existing file
-- never recreate it
-- preserve existing content unless instructed otherwise
+- preserve existing content
+- modify only what the user requested
+- never recreate the document unless explicitly instructed
 
 ---
 
@@ -277,6 +354,7 @@ When editing an existing Office document:
 
 Never:
 
+- invent OfficeCLI commands
 - invent OfficeCLI syntax
 - invent OfficeCLI JSON fields
 - invent OfficeCLI properties
@@ -286,33 +364,43 @@ Never:
 - use openpyxl
 - use reportlab
 - reload OfficeCLI skills unnecessarily
-- Never invent OfficeCLI commands.
 
 There is NO:
 
+```
 officecli read
-
-There is NO:
-
 officecli write
-
-There is NO:
-
 officecli edit
+```
 
-Use only commands documented by OfficeCLI.
+Use only documented commands such as:
 
-To inspect a document:
-
+```
+officecli create
+officecli batch
 officecli view
-
 officecli get
-
 officecli query
-
 officecli raw
+officecli help
+```
 
-depending on the task.
+---
+
+# Supported Formats
+
+Supported OfficeCLI formats:
+
+- pptx
+- docx
+- xlsx
+
+PDF is not natively supported.
+
+When a PDF is requested:
+
+- generate the closest supported Office document
+- explain that PDF conversion requires a separate export step
 
 ---
 
@@ -320,7 +408,7 @@ Everything below this separator is the official OfficeCLI documentation.
 
 Follow it exactly.
 
-If any instruction above conflicts with the official OfficeCLI documentation below, the official OfficeCLI documentation takes precedence.
+If any instruction above conflicts with the official OfficeCLI documentation, the official documentation always takes precedence.
 
 ---
 
