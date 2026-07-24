@@ -1,5 +1,13 @@
 # Adaptive Domain-Aware RAG Platform
 
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF)](https://vite.dev/)
+[![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8-005571)](https://www.elastic.co/elasticsearch/)
+[![Redis](https://img.shields.io/badge/Redis-Stack-red)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)](https://www.docker.com/)
+
 Full-stack research workspace for gold-market documents and news. The app ingests files, extracts metadata, indexes chunks into Elasticsearch, assigns each document into semantic folders, and answers scoped questions through a Deep Agent with Redis-backed memory and optional sandbox tooling.
 
 ## What the project does
