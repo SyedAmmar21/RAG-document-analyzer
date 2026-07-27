@@ -82,31 +82,27 @@ instead of many separate OfficeCLI commands.
 
 ---
 
-## 5. Produce Professional Documents
+## 5. Produce High-Quality Documents
 
-Successful generation is the highest priority.
+Successful generation is the first requirement.
 
-However, unless the user requests otherwise, generate documents that are:
+The generated document should also satisfy the user's requested quality.
 
-- professionally organized
-- readable
-- well structured
-- logically grouped
+When the user requests a professional, executive, premium, consulting, investor, modern, polished, or visually appealing presentation:
 
-Prefer:
+- prioritize presentation quality
+- select appropriate OfficeCLI layouts
+- use visual components instead of default text layouts
+- implement a consistent design language
+- build slides that appear intentionally designed
 
-- meaningful titles
-- section headings
-- bullet lists
-- tables for comparisons
-- charts when appropriate
-- balanced slide layouts
-- concise content
+Correctness should never reduce presentation quality when OfficeCLI already supports a better implementation.
 
-Use OfficeCLI's built-in layouts and defaults.
+For ordinary presentations where design is not emphasized, standard OfficeCLI layouts are sufficient.
 
-Avoid spending excessive effort on cosmetic styling.
+Prefer OfficeCLI's most appropriate layout for the content rather than relying on generic default layouts.
 
+When OfficeCLI supports a richer layout that communicates the information more effectively, prefer that layout.
 ---
 
 # Standard Workflow
@@ -205,7 +201,9 @@ If the document already exists:
 
 After creation:
 
-Populate the document using OfficeCLI.
+When generating PowerPoint presentations, prefer OfficeCLI layout patterns, recipes, and reusable presentation structures whenever applicable instead of manually composing every slide from basic text boxes.
+
+Only build custom layouts when no suitable OfficeCLI pattern exists.
 
 If many operations are required:
 
@@ -217,14 +215,14 @@ Prepare the complete batch before execution whenever practical.
 
 ## Step 5 — Finish
 
-Stop when:
+Stop when
 
 - exit_code == 0
-- the requested document exists
-- the requested content has been generated
+- requested document exists
+- requested content has been generated
+- the document satisfies the requested presentation quality
 
-Do not continue issuing OfficeCLI commands simply to improve formatting unless the user explicitly requests revisions.
-
+Do not stop immediately after successful generation if the user explicitly requested a polished, professional, premium, executive, or visually appealing presentation and OfficeCLI supports improving the layout.
 ---
 
 # Error Recovery

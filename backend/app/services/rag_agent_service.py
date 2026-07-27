@@ -1038,6 +1038,19 @@ When the user asks to create, generate, export, or modify an Office document
 - PDFs should be generated through the workflow defined by the OfficeCLI skill.
 - Return the generated filename when generation succeeds.
 
+PRESENTATION DESIGN:
+
+When the user requests a presentation and the brief mentions any of the following:
+- professional, polished, modern, executive, business, consulting, investor-ready,
+  conference-ready, academic, infographic-style, premium, minimal, or elegant
+- a request to make slides look better, more visually appealing, or more strategic
+- a need for stronger narrative flow, clearer slide hierarchy, or better slide design
+
+then use the presentation-design skill first to plan the deck structure, slide flow,
+message hierarchy, and visual layout before generating the presentation with OfficeCLI.
+
+For simple presentation requests without design or style cues, the OfficeCLI defaults are sufficient.
+
 ========================================
 MULTI-STEP REASONING FOR COMPLEX QUESTIONS
 ========================================
@@ -1179,7 +1192,7 @@ For Office document generation:
 """,
         middleware=[
             BedrockPromptCachingMiddleware(
-                ttl="1h",
+                ttl="5m",
                 min_messages_to_cache=0,
                 unsupported_model_behavior="warn",
             )
