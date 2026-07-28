@@ -1,16 +1,22 @@
 ---
 name: presentation-design
 description: |
-  Use this skill only when the user explicitly requests a presentation that should look beautiful, modern, polished, premium, professional, executive, minimal, visually appealing, investor-ready, consultant-style, or otherwise places emphasis on presentation design rather than only content generation.
+  Use for every PowerPoint or slide-deck request. It supplies visual reasoning
+  for the mandatory presentation planning phase; it never generates OfficeCLI
+  commands or selects OfficeCLI syntax.
 ---
 
 # Presentation Design Director
 
-This skill improves the visual quality of PowerPoint presentations.
+This skill improves the visual quality of PowerPoint presentations during the
+planning phase.
 
 It is **NOT** a replacement for the OfficeCLI PPTX skill.
 
-Its responsibility is to decide the presentation's visual identity, storytelling, layout rhythm, and design language before OfficeCLI creates the slides.
+Its responsibility is to decide the presentation's visual identity, storytelling,
+layout rhythm, and design language before OfficeCLI creates the slides. The
+presentation workflow enforces this ordering with tools; this skill must not
+turn directly into implementation instructions.
 
 OfficeCLI remains responsible for:
 
@@ -27,7 +33,8 @@ OfficeCLI remains responsible for:
 
 # When To Use
 
-Load this skill ONLY if the user requests things like:
+Use this skill for every requested presentation. Apply stronger visual treatment
+when the user requests things like:
 
 - beautiful presentation
 - professional slides
@@ -47,7 +54,8 @@ Load this skill ONLY if the user requests things like:
 - improve slide design
 - make the slides prettier
 
-If the user simply requests a presentation without mentioning design quality, do NOT use this skill.
+Even when the user gives no design cue, choose an appropriate business-ready
+archetype rather than assuming a title-and-bullets layout.
 
 ---
 
@@ -457,7 +465,9 @@ If improvements can be made without changing the user's requested content, make 
 
 # Design Planning Requirement
 
-Before OfficeCLI creates any slide, internally create a design plan for the entire presentation.
+Before OfficeCLI creates any slide, create the complete plan through
+`create_presentation_plan`. The plan is a machine-validated implementation
+contract, not an informal internal outline.
 
 For every slide decide:
 
@@ -467,9 +477,17 @@ For every slide decide:
 - secondary supporting elements
 - information density
 
+For the tool contract also record a recipe goal for each slide. The recipe goal
+describes the kind of official OfficeCLI recipe to retrieve later; it is not an
+OfficeCLI command and it must not be an invented recipe name.
+
 Only after every slide has an intended visual composition should OfficeCLI begin implementing the presentation.
 
 Do not decide layouts one slide at a time during generation.
+
+The workflow next loads official recipe guidance and requires one exact recipe
+selection per slide before OfficeCLI generation is unlocked. Do not skip those
+workflow steps even for a simple deck.
 ---
 
 # Relationship With OfficeCLI
@@ -478,11 +496,13 @@ This skill does not replace OfficeCLI.
 
 After deciding the presentation design strategy:
 
-1. Load the OfficeCLI PPTX skill.
+1. Submit the complete visual plan through the presentation workflow.
 
-2. Follow the OfficeCLI workflow exactly.
+2. Let the workflow load the relevant official OfficeCLI PPTX skill and select
+   recipes after the plan is fixed.
 
-3. Apply the chosen design language consistently during implementation.
+3. Apply the chosen design language consistently only through the approved
+   layout and recipe contract.
 
 If any design recommendation conflicts with OfficeCLI capabilities or documentation, OfficeCLI documentation takes precedence.
 

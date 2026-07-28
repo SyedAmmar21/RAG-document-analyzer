@@ -42,6 +42,11 @@ Determine:
 
 Avoid alternating between planning and execution.
 
+For PowerPoint, the presentation control plane is mandatory and supersedes this
+generic step: validate the complete slide plan, load official recipe guidance,
+and select a recipe for every slide before issuing any OfficeCLI command. The
+OfficeCLI phase implements that contract; it does not choose slide layouts.
+
 ---
 
 ## 2. Generate Complete Documents
@@ -103,6 +108,10 @@ For ordinary presentations where design is not emphasized, standard OfficeCLI la
 Prefer OfficeCLI's most appropriate layout for the content rather than relying on generic default layouts.
 
 When OfficeCLI supports a richer layout that communicates the information more effectively, prefer that layout.
+
+For all PowerPoint requests, use the presentation-planning and
+presentation-recipe-selection skills. Do not use a generic title-and-text slide
+simply because it is valid.
 ---
 
 # Standard Workflow
@@ -146,6 +155,11 @@ officecli load_skill excel
 ```
 
 Never reload the same skill unless generating another document type.
+
+For PowerPoint, do not invoke this step directly. The presentation workflow's
+`load_presentation_recipe_guidance` step loads exactly one official PPTX skill
+only after the deck plan is accepted, so recipe content is retrieved at the
+point it will be used.
 
 ---
 
@@ -205,6 +219,11 @@ When generating PowerPoint presentations, prefer OfficeCLI layout patterns, reci
 
 Only build custom layouts when no suitable OfficeCLI pattern exists.
 
+Implement the per-slide archetype and recipe already accepted by the
+presentation workflow. Do not use the generation phase to change a slide into
+a title-and-bullets layout, select a new recipe, or omit the planned primary
+visual.
+
 If many operations are required:
 
 Prefer one OfficeCLI batch command.
@@ -223,6 +242,9 @@ Stop when
 - the document satisfies the requested presentation quality
 
 Do not stop immediately after successful generation if the user explicitly requested a polished, professional, premium, executive, or visually appealing presentation and OfficeCLI supports improving the layout.
+
+For PowerPoint, run `qa_presentation` after generation. Deliver only after it
+passes OfficeCLI structural validation and issue inspection.
 ---
 
 # Error Recovery

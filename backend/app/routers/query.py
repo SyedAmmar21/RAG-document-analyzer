@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from app.core.paths import OUTPUT_DIR
 from app.services.rag_agent_service import get_deep_rag_agent
+from app.services.presentation_workflow import is_presentation_request
 from app.services.document_service import add_ai_response
 from app.services.domain_service import get_documents_by_domain
 
@@ -108,9 +109,14 @@ class FieldSearchRequest(BaseModel):
 # Endpoint
 @router.post("/query")
 async def query_agent(request: QueryRequest):
+    presentation_requested = is_presentation_request(request.query)
+
     # GLOBAL mode
     if request.scope_type == "global":
-        agent = get_deep_rag_agent(thread_id=request.thread_id)
+        agent = get_deep_rag_agent(
+            thread_id=request.thread_id,
+            presentation_requested=presentation_requested,
+        )
 
     # FOLDER mode
     elif request.scope_type == "folders":
@@ -153,21 +159,24 @@ async def query_agent(request: QueryRequest):
 
         agent = get_deep_rag_agent(
             document_ids=all_document_ids,
-            thread_id=request.thread_id
+            thread_id=request.thread_id,
+            presentation_requested=presentation_requested,
         )
 
     # DOCUMENT mode
     elif request.scope_type == "documents":
         agent = get_deep_rag_agent(
             document_ids=request.document_ids,
-            thread_id=request.thread_id
+            thread_id=request.thread_id,
+            presentation_requested=presentation_requested,
         )
 
     # FALLBACK single-document compatibility
     else:
         agent = get_deep_rag_agent(
             document_id=request.document_id,
-            thread_id=request.thread_id
+            thread_id=request.thread_id,
+            presentation_requested=presentation_requested,
         )
     # ========================================
     # PRELOAD REDIS MEMORIES

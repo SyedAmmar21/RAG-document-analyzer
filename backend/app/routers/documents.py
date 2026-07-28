@@ -432,12 +432,9 @@ async def delete_existing_domain(domain_id: int):
 
 @router.post("/generate-presentation")
 async def generate_presentation(request: PresentationGenerationRequest):
-    """Generate a PowerPoint presentation with specified title and slides."""
-    try:
-        result = OfficeDocumentService.create_presentation(
-            title=request.title,
-            slides=request.slides
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate presentation: {str(e)}")
+    """Deprecated: prevents the legacy title-and-text PPTX generator bypass."""
+    result = OfficeDocumentService.create_presentation(
+        title=request.title,
+        slides=request.slides,
+    )
+    raise HTTPException(status_code=409, detail=result["message"])

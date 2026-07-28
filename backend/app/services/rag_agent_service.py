@@ -21,6 +21,7 @@ from app.services.sandbox.backend_contract import (
     build_command_preamble,
     sandbox_enabled,
 )
+from app.services.presentation_workflow import PresentationWorkflow
 
 from app.services.redis_store_service import get_redis_store
 
@@ -242,7 +243,15 @@ DOCUMENT: {doc_display_name}
 
 
 
-def create_tools(llm, document_id=None, document_ids=None, thread_id="default"):
+def create_tools(
+    llm,
+    document_id=None,
+    document_ids=None,
+    thread_id="default",
+    presentation_workflow: PresentationWorkflow | None = None,
+):
+    presentation_workflow = presentation_workflow or PresentationWorkflow()
+
     def _get_output_file_state(backend) -> dict[str, str]:
         state_command = (
             "find /workspace/output -maxdepth 1 -type f "
@@ -723,6 +732,9 @@ Avoid:
         - Prefer officecli batch when multiple OfficeCLI operations can be
         executed together.
         - Minimize the number of sandbox executions whenever practical.
+        - For a PowerPoint request, OfficeCLI execution is unavailable until
+          the presentation plan has been validated, official recipe guidance
+          has been loaded, and every slide has a selected recipe.
         - If an OfficeCLI command fails, repair only the failed command
         instead of restarting the entire workflow.
 
@@ -746,6 +758,11 @@ Avoid:
             get_backend as _get_backend,
             record_output_files,
         )
+
+        try:
+            presentation_workflow.assert_officecli_generation_allowed(command)
+        except ValueError as exc:
+            return f"exit_code=1\nstdout=\nstderr={exc}\noutput={exc}"
 
         if not sandbox_enabled():
             return "exit_code=1\nstdout=\nstderr=Sandbox is disabled\noutput=Sandbox is disabled"
@@ -853,6 +870,148 @@ Avoid:
             f"output_dir_listing={chr(10).join(sorted(output_state_after.keys()))}\n"
             f"tracked_output_files={json.dumps(sorted(changed_output_files))}"
         )
+
+    @tool
+    def create_presentation_plan(plan_json: str) -> str:
+        """Validate and store the mandatory slide-by-slide presentation plan.
+
+        Call this before *any* OfficeCLI command for a presentation. The input
+        must be JSON with this shape:
+        {
+          "deck": {
+            "deck_type": "executive report",
+            "audience": "leadership team",
+            "objective": "make a decision",
+            "visual_identity": "blue consulting",
+            "motif": "numbered insight cards",
+            "officecli_skill": "pptx"
+          },
+          "slides": [{
+            "slide_number": 1,
+            "title": "...",
+            "purpose": "...",
+            "archetype": "hero",
+            "primary_visual": "...",
+            "supporting_elements": ["..."],
+            "information_density": "executive",
+            "recipe_goal": "hero / cover recipe from the loaded PPTX skill"
+          }]
+        }
+
+        The plan is an implementation contract, not a user-facing outline.
+        Do not include OfficeCLI commands. A later tool retrieves the official
+        PPTX skill and a separate call binds every slide to an exact recipe.
+        """
+        try:
+            plan = presentation_workflow.register_plan(plan_json)
+        except ValueError as exc:
+            return f"PLAN_INVALID: {exc}"
+
+        return (
+            "PLAN_ACCEPTED. OfficeCLI remains locked. Next call "
+            "load_presentation_recipe_guidance, then select recipes for every slide.\n"
+            f"Deck: {plan.deck.deck_type}; slides: {len(plan.slides)}\n"
+            f"{presentation_workflow.plan_summary()}"
+        )
+
+    @tool
+    def load_presentation_recipe_guidance() -> str:
+        """Load the official OfficeCLI PPTX or pitch-deck skill after planning.
+
+        This is the only recipe retrieval step. Use the returned official skill
+        content to select a recipe for each planned slide; do not invent layout
+        commands or copy recipe documentation into prompts. This tool does not
+        allow PPTX generation yet.
+        """
+        try:
+            officecli_skill = presentation_workflow.recipe_skill_to_load()
+        except ValueError as exc:
+            return f"RECIPE_GUIDANCE_LOCKED: {exc}"
+
+        if not sandbox_enabled():
+            return "RECIPE_GUIDANCE_FAILED: Sandbox is disabled"
+
+        from app.services.sandbox.session_store import get_backend as _get_backend
+
+        backend = _get_backend(thread_id)
+        result = backend.execute(
+            f"{build_command_preamble()}officecli load_skill {officecli_skill}"
+        )
+        if result.exit_code != 0:
+            return (
+                "RECIPE_GUIDANCE_FAILED: "
+                f"{result.stderr or result.stdout or result.output}"
+            )
+
+        presentation_workflow.mark_recipe_guidance_loaded()
+        return (
+            "OFFICIAL_RECIPE_GUIDANCE_LOADED. Select an exact official recipe "
+            "for every slide using select_presentation_recipes before generating.\n\n"
+            f"{result.output}"
+        )
+
+    @tool
+    def select_presentation_recipes(selections_json: str) -> str:
+        """Bind each planned slide to an exact recipe from the loaded OfficeCLI skill.
+
+        Input JSON: {"selections": [{"slide_number": 1,
+        "officecli_recipe": "exact recipe name or reference returned by load_presentation_recipe_guidance",
+        "rationale": "why this recipe implements the planned archetype"}]}.
+
+        This requires one and only one selection for every planned slide. After
+        success, OfficeCLI generation may implement the already-selected plan;
+        it must not reconsider slide type or invent a new layout.
+        """
+        try:
+            selections = presentation_workflow.register_recipe_selections(selections_json)
+        except ValueError as exc:
+            return f"RECIPE_SELECTION_INVALID: {exc}"
+
+        summary = "\n".join(
+            f"Slide {number}: {selection.officecli_recipe}"
+            for number, selection in sorted(selections.items())
+        )
+        return (
+            "RECIPE_SELECTION_ACCEPTED. OfficeCLI generation is now unlocked. "
+            "Implement this contract exactly, then call qa_presentation.\n"
+            f"{summary}"
+        )
+
+    @tool
+    def qa_presentation(presentation_path: str) -> str:
+        """Run required structural and issue QA on a generated presentation.
+
+        Call only after generating the PPTX at /workspace/output/<filename>.pptx.
+        It runs official OfficeCLI validation and issue inspection. If either
+        fails, repair the presentation with the selected recipe contract and
+        run this tool again before delivery.
+        """
+        try:
+            checked_path = presentation_workflow.prepare_qa(presentation_path)
+        except ValueError as exc:
+            return f"PRESENTATION_QA_LOCKED: {exc}"
+
+        if not sandbox_enabled():
+            return "PRESENTATION_QA_FAILED: Sandbox is disabled"
+
+        from app.services.sandbox.session_store import get_backend as _get_backend
+
+        backend = _get_backend(thread_id)
+        command_prefix = build_command_preamble()
+        validation = backend.execute(f"{command_prefix}officecli validate {checked_path}")
+        issues = backend.execute(f"{command_prefix}officecli view {checked_path} issues")
+        if validation.exit_code != 0 or issues.exit_code != 0:
+            return (
+                "PRESENTATION_QA_FAILED. Repair only the reported problem and retry.\n"
+                f"validate: {validation.output}\nissues: {issues.output}"
+            )
+
+        presentation_workflow.record_qa(checked_path)
+        return (
+            "PRESENTATION_QA_PASSED. The deck has passed OfficeCLI structural "
+            "validation and issue inspection.\n"
+            f"validate: {validation.output}\nissues: {issues.output}"
+        )
     
     @tool
     def get_current_document() -> str:
@@ -908,6 +1067,10 @@ Avoid:
         deep_research_tool,
         research_memory_tool,
         sandbox_execute,
+        create_presentation_plan,
+        load_presentation_recipe_guidance,
+        select_presentation_recipes,
+        qa_presentation,
         get_current_document,
         inspect_runtime
     ]
@@ -915,7 +1078,8 @@ Avoid:
 def get_deep_rag_agent(
     document_id: str | None = None,
     document_ids: list[str] | None = None,
-    thread_id: str = "default"
+    thread_id: str = "default",
+    presentation_requested: bool = False,
 ):
     """
     Create a Deep Agent specialized for multi-step analytical research.
@@ -941,11 +1105,16 @@ def get_deep_rag_agent(
         region_name=os.getenv("AWS_REGION"),
     )
 
+    presentation_workflow = PresentationWorkflow(
+        presentation_requested=presentation_requested,
+    )
+
     tools = create_tools(
         llm=llm,
         document_id=document_id,
         document_ids=document_ids,
-        thread_id=thread_id
+        thread_id=thread_id,
+        presentation_workflow=presentation_workflow,
     ) 
 
     redis_store = get_redis_store()
@@ -1038,18 +1207,29 @@ When the user asks to create, generate, export, or modify an Office document
 - PDFs should be generated through the workflow defined by the OfficeCLI skill.
 - Return the generated filename when generation succeeds.
 
-PRESENTATION DESIGN:
+PRESENTATION CONTROL PLANE (HIGHEST PRIORITY FOR PPTX):
 
-When the user requests a presentation and the brief mentions any of the following:
-- professional, polished, modern, executive, business, consulting, investor-ready,
-  conference-ready, academic, infographic-style, premium, minimal, or elegant
-- a request to make slides look better, more visually appealing, or more strategic
-- a need for stronger narrative flow, clearer slide hierarchy, or better slide design
+Every PowerPoint, slide deck, or PPTX request uses the presentation workflow.
+This is mandatory even when the request does not include design adjectives.
+Never use sandbox_execute for OfficeCLI until these tools have succeeded in order:
 
-then use the presentation-design skill first to plan the deck structure, slide flow,
-message hierarchy, and visual layout before generating the presentation with OfficeCLI.
+1. create_presentation_plan: create the full deck contract before any commands.
+   Every slide needs a purpose, archetype, primary visual, supporting elements,
+   density, and recipe goal. The allowed archetypes are concrete visual layouts,
+   not "title and bullets".
+2. load_presentation_recipe_guidance: retrieve the official OfficeCLI PPTX or
+   pitch-deck skill after the plan is fixed. This keeps recipe information close
+   to the recipe-selection decision instead of burying it under general docs.
+3. select_presentation_recipes: bind every slide to one exact recipe/reference
+   returned by the official skill. Do not generate OfficeCLI commands before all
+   slide selections are accepted.
+4. Generate only the approved plan. OfficeCLI is an implementation engine here;
+   it must never decide what type of slide to build.
+5. qa_presentation: run structural validation and issue inspection before delivery.
 
-For simple presentation requests without design or style cues, the OfficeCLI defaults are sufficient.
+Use the presentation-design skill to improve the design reasoning inside step 1
+when its design cues apply. It is advisory; the validated plan and selected
+official recipes are the binding generation contract.
 
 ========================================
 MULTI-STEP REASONING FOR COMPLEX QUESTIONS

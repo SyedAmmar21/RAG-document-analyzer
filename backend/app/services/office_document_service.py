@@ -7,12 +7,12 @@ from app.services.sandbox_service import run_sandbox
 
 class OfficeDocumentService:
     """
-    Generic document export service for agent-generated deliverables.
+    Generic document export service for non-PowerPoint deliverables.
 
-    The project has outgrown a PPT-only export path. This service now exposes
-    a generic export entry point that the Deep Agent can eventually call after
-    producing research output, while keeping the existing presentation helper
-    alive as a backwards-compatible adapter.
+    PPTX is deliberately excluded from this generic payload path. A title plus
+    a list of strings has no visual contract, so routing it to a sandbox
+    generator inevitably creates title-and-text slides and bypasses the
+    DeepAgent presentation workflow.
     """
 
     SUPPORTED_DOCUMENT_TYPES = {
@@ -43,6 +43,16 @@ class OfficeDocumentService:
                 "message": f"Unsupported document type: {document_type}",
             }
 
+        if normalized_document_type == "pptx":
+            return {
+                "status": "error",
+                "message": (
+                    "PPTX generation must use the DeepAgent presentation workflow "
+                    "(plan, official recipe selection, generation, QA). The generic "
+                    "export payload cannot represent a professional slide contract."
+                ),
+            }
+
         payload = {
             "action": "export_document",
             "document_type": normalized_document_type,
@@ -65,20 +75,18 @@ class OfficeDocumentService:
         slides: list[str]
     ):
         """
-        Temporary backwards-compatible PPT adapter.
-
-        Existing routers, tools, and clients still call this method today.
-        Internally it now routes into the generic export pipeline so the
-        architecture can evolve without breaking the current API.
+        Deprecated adapter retained only to give legacy callers an explicit,
+        actionable failure instead of silently producing simplistic slides.
         """
 
-        return OfficeDocumentService.export_document(
-            document_type="pptx",
-            content={
-                "title": title,
-                "slides": slides,
-            },
-        )
+        return {
+            "status": "error",
+            "message": (
+                "This legacy presentation API accepts only a title and strings, "
+                "so it cannot produce a planned professional deck. Use /query and "
+                "the DeepAgent presentation workflow instead."
+            ),
+        }
 
     @staticmethod
     def _persist_generated_file(
