@@ -19,6 +19,9 @@ class SandboxBackend(Protocol):
     def execute(self, command: str) -> SandboxCommandResult:
         ...
 
+    def upload_file_bytes(self, sandbox_path: str, content: bytes) -> None:
+        ...
+
     def download_file_bytes(self, sandbox_path: str) -> bytes | None:
         ...
 

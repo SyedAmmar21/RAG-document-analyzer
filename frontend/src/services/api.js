@@ -80,6 +80,55 @@ export const getDocumentViewUrl = (document_id) => (
   `${BASE_URL}/documents/${encodeURIComponent(document_id)}/view`
 );
 
+export const getOutputs = async () => {
+  const res = await fetch(`${BASE_URL}/outputs`);
+
+  return parseResponse(res);
+};
+
+export const getOutputViewUrl = (fileName) => (
+  `${BASE_URL}/outputs/${encodeURIComponent(fileName)}/view`
+);
+
+export const deleteOutput = async (fileName) => {
+  const res = await fetch(`${BASE_URL}/outputs/${encodeURIComponent(fileName)}`, {
+    method: "DELETE",
+  });
+
+  return parseResponse(res);
+};
+
+export const getActiveOutput = async (threadId) => {
+  const query = new URLSearchParams({ thread_id: threadId });
+  const res = await fetch(`${BASE_URL}/outputs/active?${query.toString()}`);
+
+  return parseResponse(res);
+};
+
+export const setActiveOutput = async (threadId, fileName) => {
+  const res = await fetch(`${BASE_URL}/outputs/active`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      thread_id: threadId,
+      file_name: fileName,
+    }),
+  });
+
+  return parseResponse(res);
+};
+
+export const clearActiveOutput = async (threadId) => {
+  const query = new URLSearchParams({ thread_id: threadId });
+  const res = await fetch(`${BASE_URL}/outputs/active?${query.toString()}`, {
+    method: "DELETE",
+  });
+
+  return parseResponse(res);
+};
+
 export const ingestLatestGoldNews = async () => {
   const res = await fetch(`${BASE_URL}/news/ingest-latest`, {
     method: "POST",

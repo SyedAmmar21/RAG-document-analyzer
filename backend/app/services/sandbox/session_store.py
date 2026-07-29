@@ -162,6 +162,22 @@ def set_current_document(thread_id: str, document: WorkingDocument) -> None:
             session.current_document = document
 
 
+def clear_current_document(thread_id: str) -> None:
+    """Clear the active working document for a thread without ending its sandbox."""
+    with _sessions_lock:
+        session = _sessions.get(thread_id)
+        if session is not None:
+            session.current_document = None
+
+
+def clear_current_document_for_filename(filename: str) -> None:
+    """Clear stale active-document references when an output file is deleted."""
+    with _sessions_lock:
+        for session in _sessions.values():
+            if session.current_document and session.current_document.filename == filename:
+                session.current_document = None
+
+
 def record_output_files(thread_id: str, file_paths: list[str]) -> None:
     """Track sandbox output files produced or updated for a thread."""
 

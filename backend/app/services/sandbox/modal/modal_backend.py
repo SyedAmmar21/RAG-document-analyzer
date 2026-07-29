@@ -48,6 +48,15 @@ class ModalSandboxBackend:
 
         return None
 
+    def upload_file_bytes(self, sandbox_path: str, content: bytes) -> None:
+        filesystem = getattr(self._sandbox, "filesystem", None)
+        write_bytes = getattr(filesystem, "write_bytes", None)
+
+        if not callable(write_bytes):
+            raise RuntimeError("Modal sandbox filesystem does not support file uploads")
+
+        write_bytes(content, sandbox_path)
+
     def terminate(self) -> None:
         if self._sandbox is not None:
             self._sandbox.terminate()

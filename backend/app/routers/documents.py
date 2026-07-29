@@ -1,5 +1,7 @@
+import asyncio
 import mimetypes
 from sqlite3 import IntegrityError
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -25,6 +27,14 @@ from app.services.domain_service import (
 from app.services.metadata_service import get_metadata as get_saved_metadata, save_metadata
 from app.services.domain_service import get_documents_by_domain
 from app.services.office_document_service import OfficeDocumentService
+from app.services.sandbox.session_store import (
+    WorkingDocument,
+    clear_current_document,
+    clear_current_document_for_filename,
+    get_backend,
+    get_current_document,
+    set_current_document,
+)
 from app.services.domain_centroid_service import (
     recompute_domain_centroid
 )
@@ -63,6 +73,58 @@ class DomainUpdateRequest(BaseModel):
 class PresentationGenerationRequest(BaseModel):
     title: str
     slides: list[str]
+
+
+class ActiveOutputRequest(BaseModel):
+    thread_id: str
+    file_name: str
+
+
+EDITABLE_OUTPUT_TYPES = {".docx", ".pptx", ".xlsx"}
+
+
+def _resolve_output_file(filename: str) -> Path:
+    """Return a generated output file only when it is directly inside OUTPUT_DIR."""
+    if not filename or "/" in filename or "\\" in filename or filename in {".", ".."}:
+        raise HTTPException(status_code=400, detail="Invalid output filename")
+
+    output_dir = OUTPUT_DIR.resolve()
+    output_path = (OUTPUT_DIR / filename).resolve()
+
+    try:
+        output_path.relative_to(output_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid output filename")
+
+    return output_path
+
+
+def _output_file_response(output_path: Path, *, disposition: str) -> FileResponse:
+    media_type, _ = mimetypes.guess_type(str(output_path))
+    safe_file_name = output_path.name.replace('"', "")
+
+    return FileResponse(
+        str(output_path),
+        media_type=media_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{safe_file_name}"',
+        },
+    )
+
+
+def _is_editable_output(output_path: Path) -> bool:
+    return output_path.suffix.lower() in EDITABLE_OUTPUT_TYPES
+
+
+def _upload_output_to_sandbox(sandbox_backend, output_path: Path) -> None:
+    upload_file_bytes = getattr(sandbox_backend, "upload_file_bytes", None)
+    if not callable(upload_file_bytes):
+        raise RuntimeError("Sandbox backend does not support file uploads")
+
+    upload_file_bytes(
+        f"/workspace/output/{output_path.name}",
+        output_path.read_bytes(),
+    )
 
 
 @router.get("/documents")
@@ -275,29 +337,136 @@ async def view_document(document_id: str):
         raise HTTPException(status_code=404, detail=f"Invalid document path: {str(e)}")
 
 
-@router.get("/download/{filename}")
-async def download_generated_file(filename: str):
-    output_path = OUTPUT_DIR / filename
+@router.get("/outputs")
+async def list_output_files():
+    """List files persisted by the AI agent for the Output workspace tab."""
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_files = []
 
-    try:
-        output_path.relative_to(OUTPUT_DIR)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid output filename")
+    for output_path in OUTPUT_DIR.iterdir():
+        if not output_path.is_file():
+            continue
+
+        try:
+            resolved_path = _resolve_output_file(output_path.name)
+            stat = resolved_path.stat()
+        except (HTTPException, OSError):
+            # Do not expose broken or unsafe filesystem entries.
+            continue
+
+        output_files.append(
+            {
+                "file_name": output_path.name,
+                "size": stat.st_size,
+                "created_date": datetime.fromtimestamp(
+                    stat.st_mtime, tz=timezone.utc
+                ).isoformat(),
+                "file_type": output_path.suffix.lower().lstrip("."),
+                "is_editable": _is_editable_output(output_path),
+            }
+        )
+
+    output_files.sort(key=lambda item: item["created_date"], reverse=True)
+    return {"outputs": output_files}
+
+
+@router.get("/outputs/active")
+async def get_active_output(thread_id: str):
+    """Return the one active working document for the supplied chat thread."""
+    current_document = get_current_document(thread_id)
+
+    if current_document is None:
+        return {"active_output": None}
+
+    return {
+        "active_output": {
+            "file_name": current_document.filename,
+            "file_type": current_document.file_type,
+        }
+    }
+
+
+@router.put("/outputs/active")
+async def set_active_output(request: ActiveOutputRequest):
+    """Make a saved Office output the active file in this chat's sandbox."""
+    output_path = _resolve_output_file(request.file_name)
 
     if not output_path.exists() or not output_path.is_file():
         raise HTTPException(status_code=404, detail="Generated file not found")
 
-    media_type, _ = mimetypes.guess_type(str(output_path))
-    safe_file_name = output_path.name.replace('"', "")
+    if not _is_editable_output(output_path):
+        raise HTTPException(
+            status_code=400,
+            detail="Only DOCX, PPTX, and XLSX outputs can be active documents",
+        )
 
-    return FileResponse(
-        str(output_path),
-        media_type=media_type or "application/octet-stream",
-        filename=safe_file_name,
-        headers={
-            "Content-Disposition": f'attachment; filename="{safe_file_name}"',
-        },
+    try:
+        sandbox_backend = await asyncio.to_thread(get_backend, request.thread_id)
+        await asyncio.to_thread(_upload_output_to_sandbox, sandbox_backend, output_path)
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not prepare the generated file in the active sandbox",
+        ) from error
+
+    current_document = WorkingDocument(
+        filename=output_path.name,
+        path=f"/workspace/output/{output_path.name}",
+        file_type=output_path.suffix.lower().lstrip("."),
     )
+    set_current_document(request.thread_id, current_document)
+
+    return {
+        "message": "Generated file is now the active document",
+        "active_output": {
+            "file_name": current_document.filename,
+            "file_type": current_document.file_type,
+        },
+    }
+
+
+@router.delete("/outputs/active")
+async def clear_active_output(thread_id: str):
+    """Deselect the active working document for this chat thread."""
+    clear_current_document(thread_id)
+    return {"message": "Active document cleared", "active_output": None}
+
+
+@router.get("/outputs/{filename}/view")
+async def view_output_file(filename: str):
+    output_path = _resolve_output_file(filename)
+
+    if not output_path.exists() or not output_path.is_file():
+        raise HTTPException(status_code=404, detail="Generated file not found")
+
+    return _output_file_response(output_path, disposition="inline")
+
+
+@router.delete("/outputs/{filename}")
+async def delete_output_file(filename: str):
+    output_path = _resolve_output_file(filename)
+
+    if not output_path.exists() or not output_path.is_file():
+        raise HTTPException(status_code=404, detail="Generated file not found")
+
+    try:
+        output_path.unlink()
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Could not delete generated file") from error
+
+    clear_current_document_for_filename(filename)
+
+    return {"message": "Generated file deleted successfully"}
+
+
+@router.get("/download/{filename}")
+async def download_generated_file(filename: str):
+    output_path = _resolve_output_file(filename)
+
+    if not output_path.exists() or not output_path.is_file():
+        raise HTTPException(status_code=404, detail="Generated file not found")
+
+    return _output_file_response(output_path, disposition="attachment")
 
 
 @router.get("/documents/{document_id}/metadata")

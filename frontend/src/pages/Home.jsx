@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import ChatWindow, { NewsModalListItems } from "../components/ChatWindow";
 import DocumentRepository from "../components/DocumentRepository";
 import FoldersView from "../components/FoldersView";
+import OutputsView from "../components/OutputsView";
 import SidebarFolders from "../components/SidebarFolders";
 import UploadModal from "../components/UploadModal";
 import MetadataModal from "../components/MetadataModal";
@@ -45,6 +46,8 @@ export default function Home() {
   const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
   const [duplicateDocument, setDuplicateDocument] = useState(null);
   const [workspaceRefreshKey, setWorkspaceRefreshKey] = useState(0);
+  const [outputRefreshKey, setOutputRefreshKey] = useState(0);
+  const [chatThreadId] = useState(() => crypto.randomUUID());
 
   // ── Retrieval Scope State (Phase 1: architecture only) ──
   const [scopeType, setScopeType] = useState("global");
@@ -215,6 +218,10 @@ export default function Home() {
     setDomainSuggestion(null);
   };
 
+  const handleOutputsChanged = () => {
+    setOutputRefreshKey((currentKey) => currentKey + 1);
+  };
+
   // ── Retrieval Scope Helpers (Phase 2: fixed) ──
   const toggleFolderSelection = (folderId) => {
     setSelectedFolderIds((prev) => {
@@ -267,6 +274,9 @@ export default function Home() {
         <button className={activeTab === "folders" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("folders")}>
           Folders
         </button>
+        <button className={activeTab === "outputs" ? "tab-button active" : "tab-button"} onClick={() => setActiveTab("outputs")}>
+          Outputs
+        </button>
       </nav>
 
       <section className="semantic-workspace" aria-label="Gold analyst workspace" hidden={activeTab !== "main"}>
@@ -291,6 +301,8 @@ export default function Home() {
 
             onToggleDocumentSelection={toggleDocumentSelection}
             onToggleFolderSelection={toggleFolderSelection}
+            onOutputsChanged={handleOutputsChanged}
+            threadId={chatThreadId}
           />
         </div>
       </section>
@@ -312,6 +324,10 @@ export default function Home() {
           onFolderChanged={handleFolderChanged}
           onFolderDeleted={handleFolderDeleted}
         />
+      </div>
+
+      <div hidden={activeTab !== "outputs"}>
+        <OutputsView key={`outputs-${outputRefreshKey}`} threadId={chatThreadId} />
       </div>
 
       <UploadModal

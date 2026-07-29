@@ -25,6 +25,8 @@ export default function ChatWindow({
   onToggleFolderSelection,
   onToggleDocumentSelection,
   onNewsIngestComplete,
+  onOutputsChanged,
+  threadId,
 }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState([]);
@@ -33,8 +35,6 @@ export default function ChatWindow({
   const [isIngestingNews, setIsIngestingNews] = useState(false);
   const [newsProgress, setNewsProgress] = useState([]);
   const [newsSummary, setNewsSummary] = useState(null);
-  const [threadId] = useState(() => crypto.randomUUID());
-
   const handleSend = async () => {
     const trimmedQuery = query.trim();
 
@@ -60,6 +60,9 @@ export default function ChatWindow({
         ...currentMessages,
         { role: "ai", text: res.answer || "I could not find an answer in the selected workspace context." },
       ]);
+      if (res.download_urls?.length) {
+        onOutputsChanged?.();
+      }
     } catch (error) {
       setError(error.message || "The assistant could not answer right now.");
     } finally {

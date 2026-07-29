@@ -797,6 +797,100 @@ h2 {
   margin-top: 20px;
 }
 
+.outputs-subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.outputs-table {
+  min-width: 860px;
+}
+
+.active-output-row td {
+  background: rgba(214, 168, 61, 0.055);
+}
+
+.output-file-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.active-output-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(214, 168, 61, 0.34);
+  border-radius: 999px;
+  background: rgba(214, 168, 61, 0.12);
+  color: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 4px 7px;
+  white-space: nowrap;
+}
+
+.output-actions {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(231, 219, 185, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.output-action-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0 11px;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.output-action-button + .output-action-button {
+  border-left: 1px solid rgba(231, 219, 185, 0.14);
+}
+
+.output-open-button:hover:not(:disabled),
+.output-open-button:focus-visible {
+  background: rgba(214, 168, 61, 0.14);
+  color: var(--primary);
+}
+
+.output-active-button:hover:not(:disabled),
+.output-active-button:focus-visible,
+.output-active-button.active {
+  background: rgba(94, 224, 160, 0.11);
+  color: var(--success);
+}
+
+.output-delete-button:hover:not(:disabled),
+.output-delete-button:focus-visible {
+  background: rgba(224, 94, 94, 0.13);
+  color: #ff8f8f;
+}
+
+.output-action-button:focus-visible {
+  position: relative;
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.output-action-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .repository-search-row {
   display: flex;
   flex-wrap: wrap;

@@ -59,6 +59,14 @@ class CubeSandboxBackend:
                 response.raise_for_status()
                 return response.content
 
+    def upload_file_bytes(self, sandbox_path: str, content: bytes) -> None:
+        self.sandbox.files.write(
+            sandbox_path,
+            content,
+            user="root",
+            gzip=False,
+        )
+
     def terminate(self):
         self.sandbox.kill()
 
