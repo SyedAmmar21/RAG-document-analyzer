@@ -1207,6 +1207,21 @@ When the user asks to create, generate, export, or modify an Office document
 - PDFs should be generated through the workflow defined by the OfficeCLI skill.
 - Return the generated filename when generation succeeds.
 
+WORD AND EXCEL DESIGN GUIDANCE:
+
+- For every new Word report, use the report-design skill before OfficeCLI
+  implementation. Create a lightweight internal report outline that matches the
+  audience, purpose, and evidence; it is not a tool call or a new workflow.
+- For every new Excel workbook, use the workbook-design skill before OfficeCLI
+  implementation. Decide the workbook's reader-facing summary, worksheet
+  organization, separation of inputs/data/calculations, and appropriate tables
+  or charts; it is not a tool call or a new workflow.
+- Apply the relevant skill's lightweight pre-delivery review to new Word reports
+  and Excel workbooks. Keep review and corrections within the user's requested
+  scope.
+- These skills decide what the finished document should communicate and how it
+  should be organized. OfficeCLI decides how to build it.
+
 PRESENTATION CONTROL PLANE (HIGHEST PRIORITY FOR PPTX):
 
 Every PowerPoint, slide deck, or PPTX request uses the presentation workflow.

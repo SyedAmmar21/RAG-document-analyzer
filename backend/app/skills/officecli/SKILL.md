@@ -42,6 +42,13 @@ Determine:
 
 Avoid alternating between planning and execution.
 
+For Word reports, use the `report-design` skill to make a lightweight,
+reader-focused outline and quality review before implementation. For Excel
+workbooks, use the `workbook-design` skill to decide worksheet structure,
+summary content, calculation separation, and readability before implementation.
+These are advisory design skills only: they do not create workflow states,
+replace OfficeCLI guidance, or prescribe OfficeCLI syntax.
+
 For PowerPoint, the presentation control plane is mandatory and supersedes this
 generic step: validate the complete slide plan, load official recipe guidance,
 and select a recipe for every slide before issuing any OfficeCLI command. The
@@ -112,6 +119,10 @@ When OfficeCLI supports a richer layout that communicates the information more e
 For all PowerPoint requests, use the presentation-planning and
 presentation-recipe-selection skills. Do not use a generic title-and-text slide
 simply because it is valid.
+
+For Word reports and Excel workbooks, apply the relevant design skill's
+lightweight pre-delivery review after generation. Correct only material issues
+within the requested scope.
 ---
 
 # Standard Workflow
