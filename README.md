@@ -7,6 +7,7 @@
 [![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8-005571)](https://www.elastic.co/elasticsearch/)
 [![Redis](https://img.shields.io/badge/Redis%20Stack-red)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)](https://www.docker.com/)
+
 Gold Analyst Helper is a full-stack, domain-aware research workspace for gold-market documents and current news. It turns uploaded files and news articles into a searchable knowledge base, groups them into semantic folders, answers scoped research questions with a Deep Agent, retains high-value findings as research memory, and can generate or revise Office files in an isolated sandbox.
 
 Although the product language and default domains are tailored to gold-market research, the document-ingestion, retrieval, and domain-organization architecture is reusable for other research collections.
